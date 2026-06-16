@@ -129,11 +129,58 @@ def detect_formulation(text_list):
     return list(forms)
 
 
+def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
+    # Clean HTML tags
+    cell_clean = re.sub(r"<[^>]+>", " ", cell)
+
+    # Extract primary name (typically bolded like **Zolbetuximab**)
+    primary_match = re.search(r"\*\*(.*?)\*\*", cell)
+    if primary_match:
+        primary_name = primary_match.group(1).strip()
+    else:
+        # Fallback to before parenthesis or br
+        primary_name = re.split(r"[\(（<]", cell_clean)[0].strip()
+        # Remove leftover bold/italic markers
+        primary_name = primary_name.replace("**", "").replace("*", "").replace("__", "").replace("_", "").strip()
+
+    aliases = []
+    # Find anything inside ( ) or （ ）
+    paren_matches = re.findall(r"[\(（](.*?)[\)）]", cell_clean)
+    for match in paren_matches:
+        # Split by / or ,
+        parts = re.split(r"[/,]", match)
+        for part in parts:
+            part_clean = part.replace("*", "").replace("_", "").strip()
+            if not part_clean:
+                continue
+
+            # Filter out generic terms, helper words, and other targets
+            part_lower = part_clean.lower()
+            rejected_words = {
+                "with", "plus", "and", "or", "chemotherapy", "immunotherapy",
+                "placebo", "regimen", "therapy", "standard of care", "soc",
+                "combination", "cohort", "dose", "mg", "kg", "group", "study",
+                "trial", "active", "comparator", "control", "monotherapy",
+                "treatment", "investigational", "drug", "biologic", "cell",
+                "her2", "cldn18.2", "egfr", "claudin", "claudin-18.2", "cldn",
+                "claudin18.2", "target", "directed"
+            }
+
+            words = re.findall(r"[a-z0-9\-]+", part_lower)
+            if any(w in rejected_words for w in words):
+                continue
+
+            if len(part_clean) >= 3 and not part_clean.isdigit():
+                if part_clean.lower() != primary_name.lower():
+                    if part_clean not in aliases:
+                        aliases.append(part_clean)
+
+    return primary_name, aliases
+
+
 def clean_cell_to_name(cell):
-    cell = re.sub(r"<[^>]+>", " ", cell)
-    cell = cell.replace("**", "").replace("*", "").replace("__", "").replace("_", "")
-    cell = re.sub(r"\(.*?\)", "", cell)
-    return cell.strip()
+    primary, _ = parse_asset_and_aliases(cell)
+    return primary
 
 
 def parse_existing_report(report_path, config):
@@ -147,23 +194,39 @@ def parse_existing_report(report_path, config):
             lines = f.readlines()
 
         in_table = False
+        col_indices = {}
         for line in lines:
             if "|" in line:
                 if not in_table:
                     if "Asset Name" in line:
                         in_table = True
+                        cols = [c.strip() for c in line.split("|")[1:-1]]
+                        for i, col_name in enumerate(cols):
+                            col_indices[col_name] = i
                     continue
-                # Skip divider lines e.g. | :--- | :--- |
-                if re.match(r"^\s*\|?\s*(:?-+:?\s*\|)+\s*(:?-+:?\s*)?$", line):
+                if re.match(r"^\s*\|?\s*(?:\s*:?-+:?\s*\|)+\s*(?:\s*:?-+:?\s*)?$", line):
                     continue
 
                 cols = [c.strip() for c in line.split("|")[1:-1]]
                 if len(cols) < 3:
                     continue
 
-                asset_cell = cols[0]
-                # Extract all word-like tokens from the asset cell to match synonyms
-                row_names = re.findall(r"[A-Za-z0-9\-]{3,25}", asset_cell)
+                # Get column indices dynamically
+                asset_idx = col_indices.get("Asset Name", 1 if "#" in col_indices else 0)
+                modality_idx = col_indices.get("MoA / Modality", 3 if "#" in col_indices else 2)
+                formulation_idx = col_indices.get("Formulation", 4 if "#" in col_indices else 3)
+                indication_idx = col_indices.get("Lead Indication", 5 if "#" in col_indices else 4)
+                safety_idx = col_indices.get("Selectivity & Safety Profile", 8 if "#" in col_indices else 7)
+                efficacy_idx = col_indices.get("Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8)
+                milestones_idx = col_indices.get("Upcoming Milestones", 10 if "#" in col_indices else 9)
+                citations_idx = col_indices.get("Citations", 11 if "#" in col_indices else 10)
+
+                if asset_idx >= len(cols):
+                    continue
+
+                asset_cell = cols[asset_idx]
+                primary_name, extracted_aliases = parse_asset_and_aliases(asset_cell)
+                row_names = [primary_name] + extracted_aliases
                 row_names_lower = {n.lower() for n in row_names}
 
                 # Find which drug in our config this matches
@@ -178,31 +241,18 @@ def parse_existing_report(report_path, config):
                 if matched_key:
                     # Update config aliases with any new names found in the report cell
                     for name in row_names:
-                        name_clean = name.strip("-").strip()
-                        if (
-                            name_clean
-                            and len(name_clean) >= 3
-                            and any(c.isalpha() for c in name_clean)
-                            and not name_clean.isdigit()
-                        ):
-                            # Add to aliases if not already the primary key or in aliases
-                            if (
-                                name_clean.lower() != matched_key.lower()
-                                and name_clean.lower()
-                                not in [
-                                    a.lower() for a in config[matched_key]["aliases"]
-                                ]
-                            ):
-                                config[matched_key]["aliases"].append(name_clean)
+                        if name.lower() != matched_key.lower():
+                            if name.lower() not in [a.lower() for a in config[matched_key]["aliases"]]:
+                                config[matched_key]["aliases"].append(name)
 
                     metadata[matched_key] = {
-                        "modality": cols[2] if len(cols) > 2 else "",
-                        "formulation": cols[3] if len(cols) > 3 else "",
-                        "indication": cols[4] if len(cols) > 4 else "",
-                        "safety": cols[7] if len(cols) > 7 else "",
-                        "efficacy": cols[8] if len(cols) > 8 else "",
-                        "milestones": cols[9] if len(cols) > 9 else "",
-                        "citations": cols[10] if len(cols) > 10 else "",
+                        "modality": cols[modality_idx] if modality_idx < len(cols) else "",
+                        "formulation": cols[formulation_idx] if formulation_idx < len(cols) else "",
+                        "indication": cols[indication_idx] if indication_idx < len(cols) else "",
+                        "safety": cols[safety_idx] if safety_idx < len(cols) else "",
+                        "efficacy": cols[efficacy_idx] if efficacy_idx < len(cols) else "",
+                        "milestones": cols[milestones_idx] if milestones_idx < len(cols) else "",
+                        "citations": cols[citations_idx] if citations_idx < len(cols) else "",
                     }
             else:
                 if in_table:
@@ -272,12 +322,14 @@ def classify_interventions(
             f"Target synonyms: {synonyms_str}\n\n"
             f"Classify each name in the JSON array below as either:\n"
             f'  "asset"      — a novel/investigational drug, biologic, or cell therapy '
-            f"that is DIRECTED AT {target_name} as its primary target "
-            f"(includes mAbs, ADCs, bispecifics, CAR-T, small molecules, fusion proteins, etc.)\n"
-            f'  "background" — anything NOT a novel targeted therapy against {target_name}: '
-            f"approved comparators, chemotherapy backbones, standard-of-care regimens, "
-            f"supportive care drugs, placebos, procedural descriptions, device names, "
-            f"generic drug class terms, or descriptions of the target protein itself\n\n"
+            f"that is DIRECTED AT {target_name} (or its synonyms) as its primary target. "
+            f"The asset name MUST be a specific molecule name, brand name, or codename/laboratory code "
+            f"(e.g., Zolbetuximab, Vyloy, TST001, AMG 910, SHR-A1904).\n"
+            f'  "background" — anything NOT a novel targeted therapy against {target_name}. This includes:\n'
+            f"    - Other targets or generic target proteins/genes (e.g., HER2, HER-2, EGFR, PD-L1, CLDN18.2 itself).\n"
+            f"    - Generic treatment modality/class terms (e.g., immunotherapy, chemotherapy, placebo, standard of care, radiotherapy, surgery, chemotherapy combination, monotherapy).\n"
+            f"    - Approved or investigational drugs that primarily target another pathway (e.g., Trastuzumab targeting HER2) rather than {target_name}.\n"
+            f"    - Supportive medications or placebos.\n\n"
             f"Input names:\n{batch_json}\n\n"
             f"Respond ONLY with a valid JSON object with exactly two keys:\n"
             f'  "asset": [ ...names classified as pipeline assets... ]\n'
@@ -289,7 +341,10 @@ def classify_interventions(
             "You are a biotech drug classification expert with deep knowledge of "
             "pharmaceutical naming conventions, clinical trial nomenclature, and "
             "approved global drugs. Output only valid JSON with no markdown fencing. "
-            "When uncertain, classify as 'background'. "
+            "When uncertain, classify as 'background'.\n"
+            "CRITICAL: An asset name MUST be a specific molecule name, brand name, or codename. "
+            "Never classify general terms (like 'immunotherapy', 'chemotherapy', 'placebo'), "
+            "other targets (like 'HER2', 'EGFR'), or target descriptions as an 'asset'. "
             "Novel investigational assets typically have alphanumeric codes "
             "(e.g. AMG910, SHR-A1904, AZD6422) or USAN/INN stems "
             "(-mab, -tib, -cept, -mig, -can, -bart) with a sponsor-specific prefix "
@@ -362,6 +417,71 @@ def _name_priority(name: str) -> tuple:
         return (1, -len(name), name)
 
     return (2, -len(name), name)
+
+
+def normalize_drug_name(name: str) -> str:
+    """Normalize a drug name by converting to lowercase and removing punctuation, spaces, and hyphens."""
+    if not name:
+        return ""
+    return re.sub(r"[\s\-_\.,/\\]", "", name).lower()
+
+
+def merge_config_duplicates(config: dict, existing_meta: dict) -> tuple[dict, dict]:
+    """
+    Groups and merges keys/aliases in config that normalize to the same name
+    or share common synonyms/aliases, ensuring we don't have separate rows
+    for different spelling variations of the same asset.
+    """
+    groups = []
+    for old_primary, details in config.items():
+        aliases = details.get("aliases", [])
+        names_set = {old_primary} | set(aliases)
+
+        merged_indices = []
+        for i, g in enumerate(groups):
+            g_normalized = {normalize_drug_name(x) for x in g}
+            if any(normalize_drug_name(n) in g_normalized or n.lower() in {x.lower() for x in g} for n in names_set):
+                merged_indices.append(i)
+
+        if not merged_indices:
+            groups.append(names_set)
+        else:
+            new_group = names_set
+            for idx in sorted(merged_indices, reverse=True):
+                new_group.update(groups.pop(idx))
+            groups.append(new_group)
+
+    new_config = {}
+    new_existing_meta = {}
+    for g in groups:
+        sorted_names = sorted(g, key=_name_priority)
+        new_primary = sorted_names[0]
+        new_aliases = sorted_names[1:]
+
+        new_config[new_primary] = {"aliases": new_aliases}
+
+        combined_meta = {}
+        for name in g:
+            if name in existing_meta:
+                for mk, mv in existing_meta[name].items():
+                    if mv and mv != "N/A" and mv != "Data not publicly disclosed." and mv != "Safety evaluation ongoing." and mv != "Phase 1 study completion.":
+                        combined_meta[mk] = mv
+                    elif mk not in combined_meta:
+                        combined_meta[mk] = mv
+            for old_p in config:
+                if old_p.lower() == name.lower() and old_p in existing_meta:
+                    for mk, mv in existing_meta[old_p].items():
+                        if mv and mv != "N/A" and mv != "Data not publicly disclosed." and mv != "Safety evaluation ongoing." and mv != "Phase 1 study completion.":
+                            combined_meta[mk] = mv
+                        elif mk not in combined_meta:
+                            combined_meta[mk] = mv
+
+        if combined_meta:
+            new_existing_meta[new_primary] = combined_meta
+
+    return new_config, new_existing_meta
+
+
 
 
 def discover_config(
@@ -486,7 +606,12 @@ def discover_config(
 
         merged_indices = []
         for i, g in enumerate(groups):
-            if any(n.lower() in {x.lower() for x in g} for n in names_clean):
+            g_normalized = {normalize_drug_name(x) for x in g}
+            if any(
+                n.lower() in {x.lower() for x in g}
+                or normalize_drug_name(n) in g_normalized
+                for n in names_clean
+            ):
                 merged_indices.append(i)
 
         if not merged_indices:
@@ -631,7 +756,6 @@ def md_table_to_csv(md_text: str) -> str:
     raw_lines = [line.rstrip() for line in md_text.splitlines()]
 
     rows: list[list[str]] = []
-    header_seen = False
 
     for line in raw_lines:
         if not line.lstrip().startswith("|"):
@@ -641,7 +765,6 @@ def md_table_to_csv(md_text: str) -> str:
             continue
         # Skip divider rows (--- / :--- / :---:)
         if all(re.match(r"^:?-+:?$", c) for c in cols if c):
-            header_seen = True
             continue
         rows.append([_strip_md(c) for c in cols])
 
@@ -771,26 +894,8 @@ def main():
     # Parse existing report for metadata extraction
     existing_meta = parse_existing_report(args.existing_report, config)
 
-    # Post-process: Re-determine primary keys based on name priority and align existing_meta
-    new_config = {}
-    new_existing_meta = {}
-    for old_primary, details in config.items():
-        aliases = details.get("aliases", [])
-        all_names = list(set([old_primary] + aliases))
-
-        # Sort by priority (ascending, 0 is highest), then length (descending), then name (ascending)
-        sorted_names = sorted(
-            all_names, key=lambda x: (get_name_priority(x), -len(x), x)
-        )
-        new_primary = sorted_names[0]
-        new_aliases = sorted_names[1:]
-
-        new_config[new_primary] = {"aliases": new_aliases}
-        if old_primary in existing_meta:
-            new_existing_meta[new_primary] = existing_meta[old_primary]
-
-    config = new_config
-    existing_meta = new_existing_meta
+    # Post-process: Re-determine primary keys and merge duplicates in config and align existing_meta
+    config, existing_meta = merge_config_duplicates(config, existing_meta)
 
     # Process trials for each asset
     asset_rows = []

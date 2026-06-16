@@ -6,22 +6,17 @@ from ddgs import DDGS
 from src.core.config import Settings
 from src.services.llm_client import LLMClient
 from src.utils import formatting
+from src.utils.generate_landscape_table import parse_asset_and_aliases
 
 
 def clean_cell_to_name(cell: str) -> str:
-    cell = re.sub(r"<[^>]+>", " ", cell)
-    cell = cell.replace("**", "").replace("*", "").replace("__", "").replace("_", "")
-    cell = re.split(r"[\(（]", cell)[0]
-    return cell.strip()
+    primary, _ = parse_asset_and_aliases(cell)
+    return primary
 
 
 def extract_names_from_cell(cell: str) -> list[str]:
-    cleaned = re.sub(r"<[^>]+>", " ", cell)
-    cleaned = (
-        cleaned.replace("**", "").replace("*", "").replace("__", "").replace("_", "")
-    )
-    names = re.findall(r"[a-zA-Z0-9\-]{3,25}", cleaned)
-    return [n.strip() for n in names if n.strip()]
+    primary, aliases = parse_asset_and_aliases(cell)
+    return [primary] + aliases
 
 
 def update_table_row(

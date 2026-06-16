@@ -16,11 +16,58 @@ CT_DISCONTINUED = {"TERMINATED", "WITHDRAWN", "SUSPENDED"}
 CDE_DISCONTINUED = {"主动终止", "已终止", "暂停"}
 
 
+def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
+    # Clean HTML tags
+    cell_clean = re.sub(r"<[^>]+>", " ", cell)
+
+    # Extract primary name (typically bolded like **Zolbetuximab**)
+    primary_match = re.search(r"\*\*(.*?)\*\*", cell)
+    if primary_match:
+        primary_name = primary_match.group(1).strip()
+    else:
+        # Fallback to before parenthesis or br
+        primary_name = re.split(r"[\(（<]", cell_clean)[0].strip()
+        # Remove leftover bold/italic markers
+        primary_name = primary_name.replace("**", "").replace("*", "").replace("__", "").replace("_", "").strip()
+
+    aliases = []
+    # Find anything inside ( ) or （ ）
+    paren_matches = re.findall(r"[\(（](.*?)[\)）]", cell_clean)
+    for match in paren_matches:
+        # Split by / or ,
+        parts = re.split(r"[/,]", match)
+        for part in parts:
+            part_clean = part.replace("*", "").replace("_", "").strip()
+            if not part_clean:
+                continue
+
+            # Filter out generic terms, helper words, and other targets
+            part_lower = part_clean.lower()
+            rejected_words = {
+                "with", "plus", "and", "or", "chemotherapy", "immunotherapy",
+                "placebo", "regimen", "therapy", "standard of care", "soc",
+                "combination", "cohort", "dose", "mg", "kg", "group", "study",
+                "trial", "active", "comparator", "control", "monotherapy",
+                "treatment", "investigational", "drug", "biologic", "cell",
+                "her2", "cldn18.2", "egfr", "claudin", "claudin-18.2", "cldn",
+                "claudin18.2", "target", "directed"
+            }
+
+            words = re.findall(r"[a-z0-9\-]+", part_lower)
+            if any(w in rejected_words for w in words):
+                continue
+
+            if len(part_clean) >= 3 and not part_clean.isdigit():
+                if part_clean.lower() != primary_name.lower():
+                    if part_clean not in aliases:
+                        aliases.append(part_clean)
+
+    return primary_name, aliases
+
+
 def clean_cell_to_name(cell):
-    cell = re.sub(r"<[^>]+>", " ", cell)
-    cell = cell.replace("**", "").replace("*", "").replace("__", "").replace("_", "")
-    cell = re.sub(r"\(.*?\)", "", cell)
-    return cell.strip()
+    primary, _ = parse_asset_and_aliases(cell)
+    return primary
 
 
 def matches_drug(text, aliases):
@@ -51,27 +98,41 @@ def parse_report_table(report_path):
         lines = f.readlines()
 
     in_table = False
+    col_indices = {}
     for line_num, line in enumerate(lines, 1):
         if "|" in line:
             if not in_table:
                 if "Asset Name" in line:
                     in_table = True
+                    cols = [c.strip() for c in line.split("|")[1:-1]]
+                    for i, col_name in enumerate(cols):
+                        col_indices[col_name] = i
                 continue
-            if re.match(r"^\s*\|?\s*(:?-+:?\s*\|)+\s*(:?-+:?\s*)?$", line):
+            if re.match(r"^\s*\|?\s*(?:\s*:?-+:?\s*\|)+\s*(?:\s*:?-+:?\s*)?$", line):
                 continue
 
             cols = [c.strip() for c in line.split("|")[1:-1]]
             if len(cols) < 3:
                 continue
 
+            # Get column indices dynamically
+            asset_idx = col_indices.get("Asset Name", 1 if "#" in col_indices else 0)
+            sponsor_idx = col_indices.get("Sponsor", 2 if "#" in col_indices else 1)
+            lead_phase_idx = col_indices.get("Development Phase", 6 if "#" in col_indices else 5)
+            trials_idx = col_indices.get("Key Trials / Registry / Patent IDs", 7 if "#" in col_indices else 6)
+
+            if asset_idx >= len(cols):
+                continue
+
+            asset_cell = cols[asset_idx]
             rows.append(
                 {
                     "line_num": line_num,
-                    "asset_cell": cols[0],
-                    "cleaned_name": clean_cell_to_name(cols[0]),
-                    "sponsor": cols[1] if len(cols) > 1 else "",
-                    "lead_phase": cols[5] if len(cols) > 5 else "",
-                    "trials_cell": cols[6] if len(cols) > 6 else "",
+                    "asset_cell": asset_cell,
+                    "cleaned_name": clean_cell_to_name(asset_cell),
+                    "sponsor": cols[sponsor_idx] if sponsor_idx < len(cols) else "",
+                    "lead_phase": cols[lead_phase_idx] if lead_phase_idx < len(cols) else "",
+                    "trials_cell": cols[trials_idx] if trials_idx < len(cols) else "",
                     "cols": cols,
                 }
             )

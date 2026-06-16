@@ -597,8 +597,132 @@ def test_discover_config_uses_classifier(mock_query):
     assert not any("folfox" in n.lower() for n in all_names)
 
 
+def test_normalize_drug_name():
+    from src.utils.generate_landscape_table import normalize_drug_name
+    assert normalize_drug_name("SHR-A1904") == "shra1904"
+    assert normalize_drug_name("AMG 910") == "amg910"
+    assert normalize_drug_name("Zolbetuximab") == "zolbetuximab"
+    assert normalize_drug_name("IMAB-362/IMAB362") == "imab362imab362"
+    assert normalize_drug_name(None) == ""
+    assert normalize_drug_name("") == ""
+
+
+def test_merge_config_duplicates():
+    from src.utils.generate_landscape_table import merge_config_duplicates
+
+    config = {
+        "AMG 910": {"aliases": []},
+        "AMG910": {"aliases": []},
+        "Zolbetuximab": {"aliases": ["IMAB362"]},
+        "Vyloy": {"aliases": ["IMAB-362"]}
+    }
+
+    existing_meta = {
+        "AMG 910": {"safety": "Safe", "efficacy": "Efficacious"},
+        "AMG910": {"safety": "N/A", "milestones": "Phase 1 completion"},
+        "Zolbetuximab": {"indication": "Gastric Cancer", "safety": "N/A"},
+        "Vyloy": {"safety": "Mild toxicity", "milestones": "N/A"}
+    }
+
+    new_config, new_meta = merge_config_duplicates(config, existing_meta)
+
+    # Check that AMG 910 and AMG910 were merged.
+    amg_keys = [k for k in new_config if "amg" in k.lower()]
+    assert len(amg_keys) == 1
+    primary_amg = amg_keys[0]
+    assert "AMG910" in new_config[primary_amg]["aliases"] or "AMG 910" in new_config[primary_amg]["aliases"]
+
+    # Check that Zolbetuximab/Vyloy were merged (since IMAB-362 and IMAB362 normalize to same)
+    zolb_keys = [k for k in new_config if "zolbetuximab" in k.lower() or "vyloy" in k.lower() or "imab" in k.lower()]
+    assert len(zolb_keys) == 1
+    primary_zolb = zolb_keys[0]
+
+    # Check meta merging
+    amg_meta = new_meta[primary_amg]
+    assert amg_meta["safety"] == "Safe"
+    assert amg_meta["efficacy"] == "Efficacious"
+    assert amg_meta["milestones"] == "Phase 1 completion"
+
+    zolb_meta = new_meta[primary_zolb]
+    assert zolb_meta["indication"] == "Gastric Cancer"
+    assert zolb_meta["safety"] == "Mild toxicity"
+
+
+def test_parse_asset_and_aliases():
+    from src.utils.generate_landscape_table import parse_asset_and_aliases
+
+    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(Vyloy / IMAB362 / IMAB-362)*")
+    assert primary == "Zolbetuximab"
+    assert set(aliases) == {"Vyloy", "IMAB362", "IMAB-362"}
+
+    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(with Chemotherapy)*")
+    assert primary == "Zolbetuximab"
+    assert aliases == []
+
+    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(Vyloy / immunotherapy / HER2)*")
+    assert primary == "Zolbetuximab"
+    assert aliases == ["Vyloy"]
+
+
+def test_parse_existing_report_dynamic_columns(tmp_path):
+    from src.utils.generate_landscape_table import parse_existing_report
+
+    # Test table with leading # column
+    table_with_hash = (
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| 1 | **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
+    )
+    report_file = tmp_path / "report_hash.md"
+    report_file.write_text(table_with_hash, encoding="utf-8")
+
+    config = {"Zolbetuximab": {"aliases": ["Vyloy", "IMAB362"]}}
+    metadata = parse_existing_report(str(report_file), config)
+
+    assert "Zolbetuximab" in metadata
+    assert metadata["Zolbetuximab"]["safety"] == "safety_val"
+    assert metadata["Zolbetuximab"]["efficacy"] == "efficacy_val"
+    assert metadata["Zolbetuximab"]["milestones"] == "milestone_val"
+    assert metadata["Zolbetuximab"]["citations"] == "citation_val"
+
+    # Test table without leading # column
+    table_no_hash = (
+        "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val2 | efficacy_val2 | milestone_val2 | citation_val2 |\n"
+    )
+    report_file_no_hash = tmp_path / "report_no_hash.md"
+    report_file_no_hash.write_text(table_no_hash, encoding="utf-8")
+
+    metadata2 = parse_existing_report(str(report_file_no_hash), config)
+    assert "Zolbetuximab" in metadata2
+    assert metadata2["Zolbetuximab"]["safety"] == "safety_val2"
+    assert metadata2["Zolbetuximab"]["efficacy"] == "efficacy_val2"
+
+
+def test_parse_report_table_dynamic_columns(tmp_path):
+    from src.utils.validate_report import parse_report_table
+
+    # Test table with leading # column
+    table_with_hash = (
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
+    )
+    report_file = tmp_path / "report_hash.md"
+    report_file.write_text(table_with_hash, encoding="utf-8")
+
+    rows = parse_report_table(str(report_file))
+    assert len(rows) == 1
+    assert rows[0]["cleaned_name"] == "Zolbetuximab"
+    assert rows[0]["trials_cell"] == "NCT03504397"
+    assert rows[0]["lead_phase"] == "Approved"
+    assert rows[0]["sponsor"] == "Astellas"
+
+
 if __name__ == "__main__":
     import subprocess
     import sys
 
     sys.exit(subprocess.run(["pytest", __file__, "-v"], check=False).returncode)
+
