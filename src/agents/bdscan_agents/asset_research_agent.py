@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from src.core.config import Settings
 from src.services.llm_client import LLMClient
