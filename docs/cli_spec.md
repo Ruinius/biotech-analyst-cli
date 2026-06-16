@@ -1,0 +1,64 @@
+# CLI Interface Specification (`docs/cli_spec.md`)
+
+This document defines the CLI interface commands, arguments, option structures, and terminal behaviors for the Biotech Analyst CLI (`ba`).
+
+---
+
+## 1. Global Setup & Command Structure
+
+The CLI is built using **Typer** and styled using **Rich**. It features **Dr. Hops** (the nerdy biotech rabbit) who delivers setup guides and pipeline diagnostics in terminal speech panels.
+
+All commands are executed using `uv run ba <command>` or via the global activated environment shim `ba <command>`.
+
+---
+
+## 2. CLI Command Reference
+
+### `ba config`
+* **Objective:** Interactive wizard to set up or modify your user profile and API key settings.
+* **Flow:**
+  1. Prompts for `Full Name` (uses existing config default if present).
+  2. Prompts for `Email Address`.
+  3. Prompts for `Base Folder` target for all research outputs.
+  4. Interactive confirmation: "Would you like to configure API keys for LLM report drafting?".
+     * Prompts for `Gemini API Key`.
+     * Prompts for `OpenRouter API Key`.
+     * Prompts for `DeepSeek API Key`.
+  5. Saves configuration settings directly to `.env` in the current folder.
+  6. Renders a masked configuration summary.
+
+---
+
+### `ba folder`
+* **Objective:** Quick directory explorer for your active biotech research portfolio.
+* **Flow:**
+  1. Verifies if configuration exists.
+  2. Scans the configured base folder for any directories.
+  3. Lists directories sorted alphabetically, assigned letter codes (e.g. `a)`, `b)`, `c)`).
+  4. Prompts: "Select a folder by its letter (or 'q' to quit)".
+  5. If running on Windows, prompts: "Would you like to open this folder in Windows Explorer?". Launches Explorer if confirmed.
+
+---
+
+### `ba bdscan [new/rerun]`
+* **Objective:** Orchestrates target pathway and molecule-class broad meta-analysis scanning.
+* **Arguments:**
+  * `new`: Prompts for pathway/target names, synonyms, and modalities. Creates the output folder structure and triggers the Multi-Agent Pipeline.
+  * `rerun`: Allows selecting an existing scan directory and re-runs the pipeline.
+* **Options:** None required.
+* **Output Folders:**
+  Creates a folder inside the configured base directory: `{YYYYMMDD}_{Target}_Scan/`
+  * `{Target}_Scan/research/`: Contains context overview (`context.md`), source-specific query tables, the master landscape table, and intermediate researcher logs.
+  * `{Target}_Scan/final_output/`: Contains the summarized competitive table, final synthesized report, and compiled paginated PDF.
+
+---
+
+### `ba deepdive [new/rerun]`
+* **Objective:** Performs clinical and commercial due diligence on a specific clinical asset.
+* **Arguments:**
+  * `new`: Prompts for asset name, sponsor/developer, and clinical trial IDs (NCT or CTR numbers). Runs the deep-dive diligence pipeline.
+  * `rerun`: Re-runs the pipeline for an existing asset folder.
+* **Output Folders:**
+  Creates a folder inside the configured base directory: `{YYYYMMDD}_{Asset}_DeepDive/`
+  * `{Asset}_DeepDive/research/`: Contains context overview (`context.md`) and raw clinical trial, openFDA, and PubChem query summary logs.
+  * `{Asset}_DeepDive/final_output/`: Contains the synthesized due diligence memo (`deep_dive_{Asset}_{YYYYMMDD}.md`) and the compiled PDF.
