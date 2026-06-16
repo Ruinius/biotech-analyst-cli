@@ -70,4 +70,3 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
    - Automated code formatting and lint checks are executed via `ruff`.
    - Secret scanning checks are executed via `detect-secrets` against `.secrets.baseline`.
    - Git push triggers these checks automatically if hooks are installed. Run `uv run pre-commit install --hook-type pre-push` to set them up locally.
-
