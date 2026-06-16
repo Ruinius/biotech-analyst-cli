@@ -43,8 +43,8 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 4: CLI Command Routing & End-to-End Validation
-- [ ] Update `ba bdscan` and `ba deepdive` commands in [main.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/cli/main.py) to route execution through `src/core/bdscan_orchestrator.py` and `src/core/deepdive_orchestrator.py`.
-- [ ] Write integration test cases to execute and verify the multi-agent execution pipeline.
-- [ ] Run the end-to-end pipeline and verify generated output tables, reports, and compiled PDFs.
-- [ ] Audit output quality using `validate_report.py`.
-- [ ] Update [AGENTS.md](file:///f:/AIML%20projects/biotech-analyst-cli/AGENTS.md) with files and new documentation links.
+- [x] Update `ba bdscan` and `ba deepdive` commands in [main.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/cli/main.py) to route execution through `src/core/bdscan_orchestrator.py` and `src/core/deepdive_orchestrator.py`.
+- [x] Write integration test cases to execute and verify the multi-agent execution pipeline.
+- [x] Run the end-to-end pipeline and verify generated output tables, reports, and compiled PDFs.
+- [x] Audit output quality using `validate_report.py`.
+- [x] Update [AGENTS.md](file:///f:/AIML%20projects/biotech-analyst-cli/AGENTS.md) with files and new documentation links.

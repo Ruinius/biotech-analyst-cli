@@ -879,11 +879,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Convert Markdown to PDF (with special styling and headers/footers)"
     )
+    parser.add_argument(
+        "pos_input", nargs="?", help="Path to input Markdown file (positional)"
+    )
+    parser.add_argument(
+        "pos_output", nargs="?", help="Path to output PDF file (positional)"
+    )
     parser.add_argument("--input", help="Path to input Markdown file")
     parser.add_argument("--output", help="Path to output PDF file")
     args = parser.parse_args()
 
-    if args.input and args.output:
-        convert_generic(args.input, args.output)
+    input_path = args.input or args.pos_input
+    output_path = args.output or args.pos_output
+
+    if input_path and output_path:
+        convert_generic(input_path, output_path)
     else:
         run()

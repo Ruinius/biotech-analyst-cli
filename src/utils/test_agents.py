@@ -1,9 +1,13 @@
+import json
 import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+from src.core.bdscan_orchestrator import run_bdscan_pipeline
+from src.core.deepdive_orchestrator import run_deepdive_pipeline
 
 # Ensure console handles Chinese characters and unicode correctly on Windows
 if sys.platform.startswith("win"):
@@ -194,7 +198,9 @@ def test_curator_agent(mock_query, settings, target_dir):
     lines = content.splitlines()
     db_start = lines.index("## database-search")
     db_end = lines.index("## web-search") if "## web-search" in lines else len(lines)
-    db_section_lines = [l for l in lines[db_start + 1 : db_end] if l.strip().startswith("-")]
+    db_section_lines = [
+        l for l in lines[db_start + 1 : db_end] if l.strip().startswith("-")
+    ]
 
     # Assert programmatic limit of 20 was enforced
     assert len(db_section_lines) == 20
@@ -211,3 +217,211 @@ def test_curator_agent(mock_query, settings, target_dir):
     assert "- Web lesson A" in content_updated
     assert "- Web lesson B" in content_updated
 
+
+def mock_query_fn(prompt, system_instruction=None):
+    if not system_instruction:
+        return "## 1. Biology and Scientific Rationale\nMock biology.\n\n## 2. Clinical Settings and Disease Areas\nMock clinical.\n\n## 3. Modality Considerations\nMock modality."
+
+    sys_lower = system_instruction.lower()
+    if "context" in sys_lower or "molecular biologist" in sys_lower:
+        return (
+            "## 1. Biology and Scientific Rationale\n"
+            "Mock biology.\n\n"
+            "## 2. Clinical Settings and Disease Areas\n"
+            "Mock clinical.\n\n"
+            "## 3. Modality Considerations\n"
+            "Mock modality."
+        )
+    elif "database search agent" in sys_lower:
+        if "Turn 1" in prompt:
+            tool_name = "search_clinicaltrials"
+            for t in [
+                "search_clinicaltrials",
+                "search_anzctr_ctis",
+                "search_conferences",
+                "search_chinese_registries",
+                "search_china_direct",
+                "search_ip_lens",
+                "search_pubchem",
+                "search_openfda",
+            ]:
+                if t in system_instruction:
+                    tool_name = t
+                    break
+            return f'[TOOL_CALL: {tool_name}(term="TestPathway")]'
+        else:
+            return "Mock database search results summary. [FINALIZE]"
+    elif "asset research agent" in sys_lower:
+        if "Turn 1" in prompt:
+            return '[TOOL_CALL: web_search(query="Mock Drug safety")]'
+        elif "Turn 2" in prompt:
+            return '[TOOL_CALL: edit_landscape_table(safety="Mild nausea", efficacy="ORR 60%", milestones="Readout 2027", citations="ASCO 2026")]'
+        else:
+            return "Finished research. [FINALIZE]"
+    elif "synthesis agent" in sys_lower:
+        if "Turn 1" in prompt:
+            return '[TOOL_CALL: web_search(query="Mock Drug market")]'
+        else:
+            return "## Executive Summary\nReconciled landscape shows positive trends. [FINALIZE]"
+    elif "curation agent" in sys_lower or "curator" in sys_lower:
+        return "- Learning item 1\n- Learning item 2"
+    return "Mock LLM Response"
+
+
+@patch("src.services.llm_client.LLMClient.query", side_effect=mock_query_fn)
+@patch("subprocess.run")
+def test_bdscan_pipeline_integration(mock_run, mock_query, settings, target_dir):
+    # Setup mock CuratorAgent learning path
+    test_learning_path = target_dir / "learning.md"
+    original_init = CuratorAgent.__init__
+
+    def mock_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.learning_filepath = test_learning_path
+
+    # Setup mock subprocess runs
+    def global_run_side_effect(cmd, *args, **kwargs):
+        cmd_str = str(cmd[1]) if len(cmd) > 1 else ""
+        if "fetch_" in cmd_str or "summarize_" in cmd_str:
+            output_idx = cmd.index("--output") if "--output" in cmd else -1
+            if output_idx != -1:
+                out_path = str(cmd[output_idx + 1])
+                if out_path.endswith(".json"):
+                    if "ct_" in out_path or "clinicaltrials" in out_path:
+                        with open(out_path, "w", encoding="utf-8") as f:
+                            json.dump(
+                                {
+                                    "NCT00000000": {
+                                        "protocolSection": {
+                                            "identificationModule": {
+                                                "nctId": "NCT00000000",
+                                                "briefTitle": "Mock Trial",
+                                            },
+                                            "statusModule": {
+                                                "overallStatus": "RECRUITING"
+                                            },
+                                            "sponsorCollaboratorsModule": {
+                                                "leadSponsor": {"name": "Mock Sponsor"}
+                                            },
+                                            "designModule": {"phases": ["PHASE2"]},
+                                            "armsInterventionsModule": {
+                                                "interventions": [{"name": "Mock Drug"}]
+                                            },
+                                        }
+                                    }
+                                },
+                                f,
+                            )
+                    elif "cdirect_" in out_path or "china_direct" in out_path:
+                        with open(out_path, "w", encoding="utf-8") as f:
+                            json.dump(
+                                {
+                                    "records": [
+                                        {
+                                            "acceptance_number": "CTR20200000",
+                                            "drug_name": "Mock Drug",
+                                            "company": "Mock Sponsor",
+                                            "status": "进行中",
+                                        }
+                                    ]
+                                },
+                                f,
+                            )
+                    else:
+                        with open(out_path, "w", encoding="utf-8") as f:
+                            json.dump(
+                                {
+                                    "results": [
+                                        {"title": "Mock Title", "id": "ChiCTR2000"}
+                                    ]
+                                },
+                                f,
+                            )
+                elif out_path.endswith(".txt"):
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(
+                            "CLINICAL TRIALS SUMMARY REPORT\nSponsor: Mock Sponsor\nEligibility Criteria:"
+                        )
+        elif "generate_landscape_table.py" in cmd_str:
+            output_idx = cmd.index("--output") if "--output" in cmd else -1
+            if output_idx != -1:
+                out_path = str(cmd[output_idx + 1])
+                headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
+                divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+                row = "| **Mock Drug** | Mock Sponsor | mAb | IV | Gastric | Phase 2 | NCT00000000 | safety | efficacy | milestones | citations |"
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(f"{headers}\n{divider}\n{row}\n")
+        elif "convert_md_to_pdf.py" in cmd_str:
+            pdf_path = str(cmd[-1])
+            with open(pdf_path, "w", encoding="utf-8") as f:
+                f.write("%PDF-1.4 mock pdf")
+
+        class MockCompletedProcess:
+            returncode = 0
+            stdout = "Mock Success"
+            stderr = ""
+
+        return MockCompletedProcess()
+
+    mock_run.side_effect = global_run_side_effect
+
+    with patch.object(CuratorAgent, "__init__", mock_init):
+        # Run the pipeline
+        pdf_out = run_bdscan_pipeline(
+            settings=settings,
+            action="new",
+            target_name="TestPathway",
+            folder_safe_name="testpathway",
+            target_dir=target_dir,
+            en_list=["TestPathway"],
+            zh_list=["TestPathway"],
+            modality="ADC",
+        )
+
+        assert pdf_out.exists()
+        assert (target_dir / "research" / "landscape_table.md").exists()
+        assert (target_dir / "context.md").exists()
+        assert test_learning_path.exists()
+
+
+@patch("src.core.deepdive_orchestrator.subprocess.run")
+def test_deepdive_pipeline_integration(mock_deep_run, settings, target_dir):
+    def deep_run_side_effect(cmd, *args, **kwargs):
+        output_idx = cmd.index("--output") if "--output" in cmd else -1
+        if output_idx != -1:
+            out_path = str(cmd[output_idx + 1])
+            if out_path.endswith(".json"):
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump({"dummy": "data"}, f)
+            elif out_path.endswith(".txt") or out_path.endswith(".md"):
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(
+                        "CLINICAL TRIALS SUMMARY REPORT\nSponsor: Mock Sponsor\nEligibility Criteria:"
+                    )
+
+        if len(cmd) > 2 and str(cmd[-1]).endswith(".pdf"):
+            with open(cmd[-1], "w", encoding="utf-8") as f:
+                f.write("%PDF-1.4 mock deepdive pdf")
+
+        class MockCompletedProcess:
+            returncode = 0
+            stdout = "Mock Success"
+            stderr = ""
+
+        return MockCompletedProcess()
+
+    mock_deep_run.side_effect = deep_run_side_effect
+
+    pdf_out = run_deepdive_pipeline(
+        settings=settings,
+        action="new",
+        asset_name="Osemitamab",
+        folder_safe_name="osemitamab",
+        target_dir=target_dir,
+        developer="Transcenta",
+        trial_id="NCT04818671",
+    )
+
+    assert pdf_out.exists()
+    assert (target_dir / "context.md").exists()
+    assert (target_dir / "research" / "osemitamab_ct.md").exists()

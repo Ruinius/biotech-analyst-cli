@@ -309,9 +309,7 @@ class AssetResearchAgent:
         # Save execution log to a markdown file
         clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", asset_name)
         log_file = (
-            self.target_dir
-            / "research"
-            / f"web_research_log_{clean_name.lower()}.md"
+            self.target_dir / "research" / f"web_research_log_{clean_name.lower()}.md"
         )
 
         log_content = [

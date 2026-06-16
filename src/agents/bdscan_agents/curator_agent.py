@@ -15,7 +15,9 @@ class CuratorAgent:
 
     def curate_database_search(self, target_dir: Path):
         """Ingest database search logs and update global learnings under ## database-search."""
-        formatting.speak("Dr. Hops' Curator Agent is analyzing database search execution logs...")
+        formatting.speak(
+            "Dr. Hops' Curator Agent is analyzing database search execution logs..."
+        )
 
         research_dir = target_dir / "research"
         if not research_dir.exists():
@@ -24,7 +26,9 @@ class CuratorAgent:
 
         log_files = list(research_dir.glob("research_log_*.md"))
         if not log_files:
-            formatting.print_warning("No database search research logs found to curate.")
+            formatting.print_warning(
+                "No database search research logs found to curate."
+            )
             return
 
         logs_content = ""
@@ -37,13 +41,17 @@ class CuratorAgent:
             logs_content += "\n---\n"
 
         existing = self.get_existing_learnings("database-search")
-        new_bullets = self.query_llm_for_learnings("database-search", existing, logs_content)
+        new_bullets = self.query_llm_for_learnings(
+            "database-search", existing, logs_content
+        )
         self.update_section("database-search", new_bullets)
         formatting.print_success("Database search learnings updated successfully.")
 
     def curate_web_search(self, target_dir: Path):
         """Ingest web research logs and update global learnings under ## web-search."""
-        formatting.speak("Dr. Hops' Curator Agent is analyzing web research execution logs...")
+        formatting.speak(
+            "Dr. Hops' Curator Agent is analyzing web research execution logs..."
+        )
 
         research_dir = target_dir / "research"
         if not research_dir.exists():
@@ -99,7 +107,9 @@ class CuratorAgent:
             formatting.print_error(f"Failed to read existing learnings: {e}")
             return ""
 
-    def query_llm_for_learnings(self, section: str, existing: str, logs: str) -> list[str]:
+    def query_llm_for_learnings(
+        self, section: str, existing: str, logs: str
+    ) -> list[str]:
         """Call the LLM Client to extract and synthesize learnings from logs."""
         system_instruction = (
             "You are Dr. Hops' Senior Curation Agent. Your objective is to extract valuable, "
@@ -144,7 +154,7 @@ class CuratorAgent:
                 "This file contains accumulated learnings, heuristics, and constraints gathered by the Biotech Analyst CLI agents during execution.\n\n"
                 "## database-search\n- Initializing search strategy template.\n\n"
                 "## web-search\n- Initializing web search template.\n",
-                encoding="utf-8"
+                encoding="utf-8",
             )
 
         try:
@@ -172,13 +182,20 @@ class CuratorAgent:
 
             # Filter and format bullet points
             cleaned_bullets = [bp.strip() for bp in bullet_points if bp.strip()]
-            formatted_points = [f"- {bp}" if not bp.startswith("- ") else bp for bp in cleaned_bullets]
+            formatted_points = [
+                f"- {bp}" if not bp.startswith("- ") else bp for bp in cleaned_bullets
+            ]
 
             # Enforce max 20 lines constraint programmatically
             formatted_points = formatted_points[:20]
 
             # Reconstruct the file content
-            new_content = lines[:section_idx + 1] + formatted_points + [""] + lines[next_section_idx:]
+            new_content = (
+                lines[: section_idx + 1]
+                + formatted_points
+                + [""]
+                + lines[next_section_idx:]
+            )
 
             # Clean double empty lines
             cleaned_lines = []
@@ -190,6 +207,10 @@ class CuratorAgent:
                 cleaned_lines.append(line)
                 prev_empty = is_empty
 
-            self.learning_filepath.write_text("\n".join(cleaned_lines) + "\n", encoding="utf-8")
+            self.learning_filepath.write_text(
+                "\n".join(cleaned_lines) + "\n", encoding="utf-8"
+            )
         except Exception as e:
-            formatting.print_error(f"Failed to write updated section to learnings file: {e}")
+            formatting.print_error(
+                f"Failed to write updated section to learnings file: {e}"
+            )
