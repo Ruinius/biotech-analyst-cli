@@ -78,7 +78,6 @@ Next steps:
   - Define a nested JSON schema under `tmp/` (keyed by canonical asset names, containing sub-fields/lists for matching trial records, patents, conference abstracts, PubChem bioassays, and openFDA safety labels).
   - Implement a name/alias reconciliation mapper that scans raw search outputs in `tmp/` and assigns matched records to their respective assets.
   - Run the reconciler in the orchestrator pipeline right after the database search phase finishes.
-
 - [x] other targets, such as HER2 and generic terms such as immunotherapy are sneaking into the "Asset Name" column in the landscape and final output table. Double check if the asset name column is heuristics (which is failing) or AI Agent based. The asset name column should be a molecule name, a brand name, or a codename (e.g., TST001)
 - the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
 - build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working
