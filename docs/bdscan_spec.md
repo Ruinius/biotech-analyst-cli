@@ -61,6 +61,7 @@ graph TD
   - **Turn 4:** Merges, reformats, and compiles raw results.
 - **Hallucination Prevention:** The final search logs of each source are saved to raw research files. The data mapping is compiled using a deterministic **append / de-duplicate utility script** (no LLM rewriting of trial data) to ensure 100% data integrity.
 - **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## database-search`.
+  COMMENT: this seems too structured... for example, why wouldn't turn 2 just look at the results and generate new terms and perform the search? Turn 4 could do the same but just need to call finalize at the end.
 
 ---
 
@@ -81,11 +82,13 @@ graph TD
   - `web_search`: Query search engines for recent papers, news, and pipeline releases.
   - `edit_landscape_table`: Row-specific editing tool to write back details directly to the big table in `research/`.
 - **Objective:** For each asset, research and verify critical diligence details via web search:
-  - Alternative names and laboratory codes (e.g. "AMG-910" vs "AMG910").
+  - Alternative names and laboratory codes (e.g. "AMG-910" vs "AMG910"). COMMENT: this example is probably benign. I am more worried about different codes for same assets. Usually by partner sponsors.
   - Originator, licensing partner, and developer details.
   - Development status: Validate if the asset is still active, on hold, or discontinued (e.g. checking recent financial/pipeline updates).
   - Exclusivity, selectivity constants, safety profiles, and key clinical milestones.
 - **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## web-search`.
+  COMMENT: the info from web search should be written in new columns. The existing columns should be immutable to prevent hallucination.
+  COMMENT: if this is going to generate 20+ agents, then pause, tell the user how many agents will be created, and ask for permission.
 
 ---
 
@@ -99,6 +102,7 @@ graph TD
   1. **Summarized Output Table:** A clean, reconciled competitive matrix representing all active/promising candidates, clinical phases, and developer attributes.
   2. **Diligence Memo / Report:** A deep strategic markdown report detailing pathway rationale, differentiation vectors, and licensing catalysts.
 - **Execution Constraint:** To prevent page-splitting issues during PDF compilation, the synthesized report markdown must **not** embed the big table inline. The report and the table will be generated as two separate markdown documents.
+  COMMENT: check asset-pipeline-research/output/ for sample output
 
 ---
 
@@ -106,7 +110,7 @@ graph TD
 
 - **Mode:** Stage-end curation agent.
 - **Objective:** Aggregates logs from the database search and web search runs to update rules and search lessons.
-- **Difference from Financial CLI:** Instead of local ticker-specific folders, this curator maintains a **single global file** at `f:\AIML projects\biotech-analyst-cli\learning.md` in the project root.
-- **Sections Maintained:**
+- **Difference from Financial CLI:** Instead of local ticker-specific folders, this curator maintains a **single global file** at `f:\AIML projects\biotech-analyst-cli\self-improving\learning.md` in the project root.
+- **Sections Maintained:** These should be 20 lines max.
   - `## database-search`: Tracks optimal search keyword strategies, translation maps, and database quirks.
   - `## web-search`: Tracks site locations, sponsor registries, pipeline tracking urls, and nomenclature rules.
