@@ -141,7 +141,13 @@ def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
         # Fallback to before parenthesis or br
         primary_name = re.split(r"[\(（<]", cell_clean)[0].strip()
         # Remove leftover bold/italic markers
-        primary_name = primary_name.replace("**", "").replace("*", "").replace("__", "").replace("_", "").strip()
+        primary_name = (
+            primary_name.replace("**", "")
+            .replace("*", "")
+            .replace("__", "")
+            .replace("_", "")
+            .strip()
+        )
 
     aliases = []
     # Find anything inside ( ) or （ ）
@@ -157,13 +163,43 @@ def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
             # Filter out generic terms, helper words, and other targets
             part_lower = part_clean.lower()
             rejected_words = {
-                "with", "plus", "and", "or", "chemotherapy", "immunotherapy",
-                "placebo", "regimen", "therapy", "standard of care", "soc",
-                "combination", "cohort", "dose", "mg", "kg", "group", "study",
-                "trial", "active", "comparator", "control", "monotherapy",
-                "treatment", "investigational", "drug", "biologic", "cell",
-                "her2", "cldn18.2", "egfr", "claudin", "claudin-18.2", "cldn",
-                "claudin18.2", "target", "directed"
+                "with",
+                "plus",
+                "and",
+                "or",
+                "chemotherapy",
+                "immunotherapy",
+                "placebo",
+                "regimen",
+                "therapy",
+                "standard of care",
+                "soc",
+                "combination",
+                "cohort",
+                "dose",
+                "mg",
+                "kg",
+                "group",
+                "study",
+                "trial",
+                "active",
+                "comparator",
+                "control",
+                "monotherapy",
+                "treatment",
+                "investigational",
+                "drug",
+                "biologic",
+                "cell",
+                "her2",
+                "cldn18.2",
+                "egfr",
+                "claudin",
+                "claudin-18.2",
+                "cldn",
+                "claudin18.2",
+                "target",
+                "directed",
             }
 
             words = re.findall(r"[a-z0-9\-]+", part_lower)
@@ -204,7 +240,9 @@ def parse_existing_report(report_path, config):
                         for i, col_name in enumerate(cols):
                             col_indices[col_name] = i
                     continue
-                if re.match(r"^\s*\|?\s*(?:\s*:?-+:?\s*\|)+\s*(?:\s*:?-+:?\s*)?$", line):
+                if re.match(
+                    r"^\s*\|?\s*(?:\s*:?-+:?\s*\|)+\s*(?:\s*:?-+:?\s*)?$", line
+                ):
                     continue
 
                 cols = [c.strip() for c in line.split("|")[1:-1]]
@@ -212,25 +250,39 @@ def parse_existing_report(report_path, config):
                     continue
 
                 # Get column indices dynamically
-                asset_idx = col_indices.get("Asset Name", 1 if "#" in col_indices else 0)
-                modality_idx = col_indices.get("MoA / Modality", 3 if "#" in col_indices else 2)
-                formulation_idx = col_indices.get("Formulation", 4 if "#" in col_indices else 3)
-                indication_idx = col_indices.get("Lead Indication", 5 if "#" in col_indices else 4)
+                asset_idx = col_indices.get(
+                    "Asset Name", 1 if "#" in col_indices else 0
+                )
+                modality_idx = col_indices.get(
+                    "MoA / Modality", 3 if "#" in col_indices else 2
+                )
+                formulation_idx = col_indices.get(
+                    "Formulation", 4 if "#" in col_indices else 3
+                )
+                indication_idx = col_indices.get(
+                    "Lead Indication", 5 if "#" in col_indices else 4
+                )
                 safety_idx = col_indices.get(
                     "Web Selectivity & Safety Profile",
-                    col_indices.get("Selectivity & Safety Profile", 8 if "#" in col_indices else 7)
+                    col_indices.get(
+                        "Selectivity & Safety Profile", 8 if "#" in col_indices else 7
+                    ),
                 )
                 efficacy_idx = col_indices.get(
                     "Web Key Efficacy Data",
-                    col_indices.get("Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8)
+                    col_indices.get(
+                        "Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8
+                    ),
                 )
                 milestones_idx = col_indices.get(
                     "Web Upcoming Milestones",
-                    col_indices.get("Upcoming Milestones", 10 if "#" in col_indices else 9)
+                    col_indices.get(
+                        "Upcoming Milestones", 10 if "#" in col_indices else 9
+                    ),
                 )
                 citations_idx = col_indices.get(
                     "Web Citations / Sources",
-                    col_indices.get("Citations", 11 if "#" in col_indices else 10)
+                    col_indices.get("Citations", 11 if "#" in col_indices else 10),
                 )
 
                 if asset_idx >= len(cols):
@@ -254,17 +306,31 @@ def parse_existing_report(report_path, config):
                     # Update config aliases with any new names found in the report cell
                     for name in row_names:
                         if name.lower() != matched_key.lower():
-                            if name.lower() not in [a.lower() for a in config[matched_key]["aliases"]]:
+                            if name.lower() not in [
+                                a.lower() for a in config[matched_key]["aliases"]
+                            ]:
                                 config[matched_key]["aliases"].append(name)
 
                     metadata[matched_key] = {
-                        "modality": cols[modality_idx] if modality_idx < len(cols) else "",
-                        "formulation": cols[formulation_idx] if formulation_idx < len(cols) else "",
-                        "indication": cols[indication_idx] if indication_idx < len(cols) else "",
+                        "modality": cols[modality_idx]
+                        if modality_idx < len(cols)
+                        else "",
+                        "formulation": cols[formulation_idx]
+                        if formulation_idx < len(cols)
+                        else "",
+                        "indication": cols[indication_idx]
+                        if indication_idx < len(cols)
+                        else "",
                         "safety": cols[safety_idx] if safety_idx < len(cols) else "",
-                        "efficacy": cols[efficacy_idx] if efficacy_idx < len(cols) else "",
-                        "milestones": cols[milestones_idx] if milestones_idx < len(cols) else "",
-                        "citations": cols[citations_idx] if citations_idx < len(cols) else "",
+                        "efficacy": cols[efficacy_idx]
+                        if efficacy_idx < len(cols)
+                        else "",
+                        "milestones": cols[milestones_idx]
+                        if milestones_idx < len(cols)
+                        else "",
+                        "citations": cols[citations_idx]
+                        if citations_idx < len(cols)
+                        else "",
                     }
             else:
                 if in_table:
@@ -452,7 +518,11 @@ def merge_config_duplicates(config: dict, existing_meta: dict) -> tuple[dict, di
         merged_indices = []
         for i, g in enumerate(groups):
             g_normalized = {normalize_drug_name(x) for x in g}
-            if any(normalize_drug_name(n) in g_normalized or n.lower() in {x.lower() for x in g} for n in names_set):
+            if any(
+                normalize_drug_name(n) in g_normalized
+                or n.lower() in {x.lower() for x in g}
+                for n in names_set
+            ):
                 merged_indices.append(i)
 
         if not merged_indices:
@@ -476,14 +546,26 @@ def merge_config_duplicates(config: dict, existing_meta: dict) -> tuple[dict, di
         for name in g:
             if name in existing_meta:
                 for mk, mv in existing_meta[name].items():
-                    if mv and mv != "N/A" and mv != "Data not publicly disclosed." and mv != "Safety evaluation ongoing." and mv != "Phase 1 study completion.":
+                    if (
+                        mv
+                        and mv != "N/A"
+                        and mv != "Data not publicly disclosed."
+                        and mv != "Safety evaluation ongoing."
+                        and mv != "Phase 1 study completion."
+                    ):
                         combined_meta[mk] = mv
                     elif mk not in combined_meta:
                         combined_meta[mk] = mv
             for old_p in config:
                 if old_p.lower() == name.lower() and old_p in existing_meta:
                     for mk, mv in existing_meta[old_p].items():
-                        if mv and mv != "N/A" and mv != "Data not publicly disclosed." and mv != "Safety evaluation ongoing." and mv != "Phase 1 study completion.":
+                        if (
+                            mv
+                            and mv != "N/A"
+                            and mv != "Data not publicly disclosed."
+                            and mv != "Safety evaluation ongoing."
+                            and mv != "Phase 1 study completion."
+                        ):
                             combined_meta[mk] = mv
                         elif mk not in combined_meta:
                             combined_meta[mk] = mv
@@ -492,8 +574,6 @@ def merge_config_duplicates(config: dict, existing_meta: dict) -> tuple[dict, di
             new_existing_meta[new_primary] = combined_meta
 
     return new_config, new_existing_meta
-
-
 
 
 def discover_config(
@@ -571,9 +651,7 @@ def discover_config(
                     codes = re.findall(r"\b[A-Za-z]{2,6}-?\d{2,6}[A-Za-z]?\b", title)
                     conf_codes.extend(codes)
             except Exception as e:
-                print(
-                    f"Warning: Failed to process conference file {filepath}: {e}"
-                )
+                print(f"Warning: Failed to process conference file {filepath}: {e}")
 
     # -----------------------------------------------------------------------
     # 4. Build flat list of all unique names for classification
@@ -668,7 +746,7 @@ def _strip_md(text: str) -> str:
     # Remove bold/italic markers
     text = text.replace("**", "").replace("__", "")
     text = re.sub(r"(?<!\*)\*(?!\*)", "", text)  # single *
-    text = re.sub(r"(?<!_)_(?!_)", "", text)      # single _
+    text = re.sub(r"(?<!_)_(?!_)", "", text)  # single _
     # Remove markdown links [text](url) -> text only
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
     return text.strip()
@@ -1150,22 +1228,6 @@ def main():
             or old_data.get("indication")
             or "Gastric / GEJ Adenocarcinoma"
         )
-        safety = (
-            details.get("selectivity_safety")
-            or old_data.get("safety")
-            or "Safety evaluation ongoing."
-        )
-        efficacy = (
-            details.get("efficacy_data")
-            or old_data.get("efficacy")
-            or "Data not publicly disclosed."
-        )
-        milestones = (
-            details.get("milestones")
-            or old_data.get("milestones")
-            or "Phase 1 study completion."
-        )
-        citations = details.get("citations") or old_data.get("citations") or "N/A"
 
         # Format asset name with aliases in HTML/Markdown
         alias_str = " / ".join(aliases)
@@ -1198,9 +1260,7 @@ def main():
         md_lines.append(
             "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs |"
         )
-        md_lines.append(
-            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-        )
+        md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
         for idx, row in enumerate(asset_rows, start=1):
             # Prepend the row number to the existing row markdown
             md_lines.append(row["row_markdown"].replace("| ", f"| {idx} | ", 1))

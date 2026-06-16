@@ -22,6 +22,8 @@ def run_cmd(cmd_args: list[str]) -> tuple[bool, str, str]:
             env=my_env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         return res.returncode == 0, res.stdout, res.stderr
     except Exception as e:

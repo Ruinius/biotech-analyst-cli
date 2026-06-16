@@ -199,14 +199,14 @@ class LLMClient:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
-                        chunk_data = line[len("data: "):]
+                        chunk_data = line[len("data: ") :]
                         try:
                             data = json.loads(chunk_data)
                             text = data["candidates"][0]["content"]["parts"][0]["text"]
                             full_response.append(text)
                             sys.stdout.write(text)
                             sys.stdout.flush()
-                        except (json.JSONDecodeError, KeyError, IndexError):
+                        except json.JSONDecodeError, KeyError, IndexError:
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()
@@ -251,7 +251,7 @@ class LLMClient:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
-                        chunk_data = line[len("data: "):]
+                        chunk_data = line[len("data: ") :]
                         if chunk_data.strip() == "[DONE]":
                             break
                         try:
@@ -261,7 +261,7 @@ class LLMClient:
                                 full_response.append(text)
                                 sys.stdout.write(text)
                                 sys.stdout.flush()
-                        except (json.JSONDecodeError, KeyError, IndexError):
+                        except json.JSONDecodeError, KeyError, IndexError:
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()
@@ -304,7 +304,7 @@ class LLMClient:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
-                        chunk_data = line[len("data: "):]
+                        chunk_data = line[len("data: ") :]
                         if chunk_data.strip() == "[DONE]":
                             break
                         try:
@@ -314,7 +314,7 @@ class LLMClient:
                                 full_response.append(text)
                                 sys.stdout.write(text)
                                 sys.stdout.flush()
-                        except (json.JSONDecodeError, KeyError, IndexError):
+                        except json.JSONDecodeError, KeyError, IndexError:
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()

@@ -175,7 +175,9 @@ class SynthesisAgent:
         )
         table_md = table_header + table_content
         table_file.write_text(md_table_to_text_table(table_md), encoding="utf-8")
-        formatting.print_success(f"Saved column-aligned competitive matrix table to {table_file}")
+        formatting.print_success(
+            f"Saved column-aligned competitive matrix table to {table_file}"
+        )
 
         # Write CSV version alongside the .md
         csv_file = table_file.with_suffix(".csv")

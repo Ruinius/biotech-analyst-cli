@@ -62,7 +62,9 @@ def update_table_row(
         if not line.strip() or idx <= header_idx + 1:
             continue
         cols = [c.strip() for c in line.split("|")]
-        if len(cols) <= max(asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx):
+        if len(cols) <= max(
+            asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx
+        ):
             continue
 
         name_cell = cols[asset_idx]
@@ -76,6 +78,7 @@ def update_table_row(
             break
 
     table_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 def web_search(query: str) -> str:
     """Query DuckDuckGo for clinical news and pipeline updates."""
@@ -204,7 +207,9 @@ class AssetResearchAgent:
             if not line.strip() or idx <= header_idx + 1:
                 continue
             cols = [c.strip() for c in line.split("|")]
-            if len(cols) <= max(asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx):
+            if len(cols) <= max(
+                asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx
+            ):
                 continue
             if clean_cell_to_name(cols[asset_idx]).lower() == parent_name.lower():
                 parent_safety = cols[safety_idx]

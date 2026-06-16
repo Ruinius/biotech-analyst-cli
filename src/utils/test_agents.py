@@ -160,7 +160,9 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
     headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    divider = (
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    )
     row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
@@ -599,6 +601,7 @@ def test_discover_config_uses_classifier(mock_query):
 
 def test_normalize_drug_name():
     from src.utils.generate_landscape_table import normalize_drug_name
+
     assert normalize_drug_name("SHR-A1904") == "shra1904"
     assert normalize_drug_name("AMG 910") == "amg910"
     assert normalize_drug_name("Zolbetuximab") == "zolbetuximab"
@@ -614,14 +617,14 @@ def test_merge_config_duplicates():
         "AMG 910": {"aliases": []},
         "AMG910": {"aliases": []},
         "Zolbetuximab": {"aliases": ["IMAB362"]},
-        "Vyloy": {"aliases": ["IMAB-362"]}
+        "Vyloy": {"aliases": ["IMAB-362"]},
     }
 
     existing_meta = {
         "AMG 910": {"safety": "Safe", "efficacy": "Efficacious"},
         "AMG910": {"safety": "N/A", "milestones": "Phase 1 completion"},
         "Zolbetuximab": {"indication": "Gastric Cancer", "safety": "N/A"},
-        "Vyloy": {"safety": "Mild toxicity", "milestones": "N/A"}
+        "Vyloy": {"safety": "Mild toxicity", "milestones": "N/A"},
     }
 
     new_config, new_meta = merge_config_duplicates(config, existing_meta)
@@ -630,10 +633,17 @@ def test_merge_config_duplicates():
     amg_keys = [k for k in new_config if "amg" in k.lower()]
     assert len(amg_keys) == 1
     primary_amg = amg_keys[0]
-    assert "AMG910" in new_config[primary_amg]["aliases"] or "AMG 910" in new_config[primary_amg]["aliases"]
+    assert (
+        "AMG910" in new_config[primary_amg]["aliases"]
+        or "AMG 910" in new_config[primary_amg]["aliases"]
+    )
 
     # Check that Zolbetuximab/Vyloy were merged (since IMAB-362 and IMAB362 normalize to same)
-    zolb_keys = [k for k in new_config if "zolbetuximab" in k.lower() or "vyloy" in k.lower() or "imab" in k.lower()]
+    zolb_keys = [
+        k
+        for k in new_config
+        if "zolbetuximab" in k.lower() or "vyloy" in k.lower() or "imab" in k.lower()
+    ]
     assert len(zolb_keys) == 1
     primary_zolb = zolb_keys[0]
 
@@ -651,15 +661,21 @@ def test_merge_config_duplicates():
 def test_parse_asset_and_aliases():
     from src.utils.generate_landscape_table import parse_asset_and_aliases
 
-    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(Vyloy / IMAB362 / IMAB-362)*")
+    primary, aliases = parse_asset_and_aliases(
+        "**Zolbetuximab**<br>*(Vyloy / IMAB362 / IMAB-362)*"
+    )
     assert primary == "Zolbetuximab"
     assert set(aliases) == {"Vyloy", "IMAB362", "IMAB-362"}
 
-    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(with Chemotherapy)*")
+    primary, aliases = parse_asset_and_aliases(
+        "**Zolbetuximab**<br>*(with Chemotherapy)*"
+    )
     assert primary == "Zolbetuximab"
     assert aliases == []
 
-    primary, aliases = parse_asset_and_aliases("**Zolbetuximab**<br>*(Vyloy / immunotherapy / HER2)*")
+    primary, aliases = parse_asset_and_aliases(
+        "**Zolbetuximab**<br>*(Vyloy / immunotherapy / HER2)*"
+    )
     assert primary == "Zolbetuximab"
     assert aliases == ["Vyloy"]
 
@@ -720,9 +736,17 @@ def test_parse_report_table_dynamic_columns(tmp_path):
     assert rows[0]["sponsor"] == "Astellas"
 
 
+def test_db_search_agent_run_cmd_unicode():
+    from src.agents.bdscan_agents.db_search_agent import run_cmd
+
+    # Run a python command that outputs Chinese text to stdout
+    success, stdout, stderr = run_cmd(["-c", "print('测试中文')"])
+    assert success
+    assert "测试中文" in stdout
+
+
 if __name__ == "__main__":
     import subprocess
     import sys
 
     sys.exit(subprocess.run(["pytest", __file__, "-v"], check=False).returncode)
-

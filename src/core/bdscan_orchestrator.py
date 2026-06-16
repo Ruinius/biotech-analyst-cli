@@ -24,6 +24,8 @@ def run_pipeline_step(cmd_args, step_name):
         env=my_env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if res.returncode != 0:
         formatting.print_warning(

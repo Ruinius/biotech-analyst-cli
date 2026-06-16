@@ -282,7 +282,14 @@ TEST_SUITE = [
 
 def run_command(cmd):
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+        )
         return True, res.stdout, res.stderr
     except subprocess.CalledProcessError as e:
         return False, e.stdout, e.stderr

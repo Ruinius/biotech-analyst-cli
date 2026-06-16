@@ -96,33 +96,5 @@ Next steps:
 - build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working. Also, probably want to limit the concurrency to 8-10. Also need to figure how to handle situations where one agent returns a row is duplicate, but another agent already started on it. Probably some waste, but just need to make sure it doesn't cause error.
 
 - [x] what is "update_learnings" in asset_reserach_agent? Only the curator_agent can update learnings. Double check this across all agents. (Unused helper function removed).
-- error when searching in Chinese:
-  Traceback (most recent call last):
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1082, in \_bootstrap_inner
-  self.\_context.run(self.run)
-  ```^^^^^^^^^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1024, in run
-  self.\_target(*self.\_args, \*\*self.\_kwargs)
-  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1082, in \_bootstrap_inner
-  self.\_context.run(self.run)
-  ~~~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\subprocess.py", line 1613, in \_readerthread
-  buffer.append(fh.read())
-  ~~~~~~~^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\encodings\cp1252.py", line 23, in decode
-  return codecs.charmap_decode(input,self.errors,decoding_table)[0]
-  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 45: character maps to <undefined>
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1024, in run
-  self.\_target(*self.\_args, \*\*self.\_kwargs)
-  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\subprocess.py", line 1613, in \_readerthread
-  buffer.append(fh.read())
-  ~~~~~~~^^
-  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\encodings\cp1252.py", line 23, in decode
-  return codecs.charmap_decode(input,self.errors,decoding_table)[0]
-  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 44: character maps to <undefined>
-  ℹ INFO: Turn 4/4 for Chinese WHO Registries...
-  ```
+- [x] error when searching in Chinese:
+  UnicodeDecodeError in subprocess reader thread on Windows resolved by explicitly passing utf-8 encoding and errors='replace' to subprocess execution.

@@ -43,7 +43,14 @@ def compile_landscape_table(
         cmd_args += ["--target-synonyms", ",".join(target_synonyms)]
 
     formatting.print_info("Running legacy landscape table generation script...")
-    res = subprocess.run(cmd_args, env=my_env, capture_output=True, text=True)
+    res = subprocess.run(
+        cmd_args,
+        env=my_env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     if res.returncode != 0 or not os.path.exists(temp_table_out):
         formatting.print_error(
             f"Landscape table generation failed: {res.stderr or res.stdout}"

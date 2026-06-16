@@ -28,7 +28,13 @@ def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
         # Fallback to before parenthesis or br
         primary_name = re.split(r"[\(（<]", cell_clean)[0].strip()
         # Remove leftover bold/italic markers
-        primary_name = primary_name.replace("**", "").replace("*", "").replace("__", "").replace("_", "").strip()
+        primary_name = (
+            primary_name.replace("**", "")
+            .replace("*", "")
+            .replace("__", "")
+            .replace("_", "")
+            .strip()
+        )
 
     aliases = []
     # Find anything inside ( ) or （ ）
@@ -44,13 +50,43 @@ def parse_asset_and_aliases(cell: str) -> tuple[str, list[str]]:
             # Filter out generic terms, helper words, and other targets
             part_lower = part_clean.lower()
             rejected_words = {
-                "with", "plus", "and", "or", "chemotherapy", "immunotherapy",
-                "placebo", "regimen", "therapy", "standard of care", "soc",
-                "combination", "cohort", "dose", "mg", "kg", "group", "study",
-                "trial", "active", "comparator", "control", "monotherapy",
-                "treatment", "investigational", "drug", "biologic", "cell",
-                "her2", "cldn18.2", "egfr", "claudin", "claudin-18.2", "cldn",
-                "claudin18.2", "target", "directed"
+                "with",
+                "plus",
+                "and",
+                "or",
+                "chemotherapy",
+                "immunotherapy",
+                "placebo",
+                "regimen",
+                "therapy",
+                "standard of care",
+                "soc",
+                "combination",
+                "cohort",
+                "dose",
+                "mg",
+                "kg",
+                "group",
+                "study",
+                "trial",
+                "active",
+                "comparator",
+                "control",
+                "monotherapy",
+                "treatment",
+                "investigational",
+                "drug",
+                "biologic",
+                "cell",
+                "her2",
+                "cldn18.2",
+                "egfr",
+                "claudin",
+                "claudin-18.2",
+                "cldn",
+                "claudin18.2",
+                "target",
+                "directed",
             }
 
             words = re.findall(r"[a-z0-9\-]+", part_lower)
@@ -118,8 +154,12 @@ def parse_report_table(report_path):
             # Get column indices dynamically
             asset_idx = col_indices.get("Asset Name", 1 if "#" in col_indices else 0)
             sponsor_idx = col_indices.get("Sponsor", 2 if "#" in col_indices else 1)
-            lead_phase_idx = col_indices.get("Development Phase", 6 if "#" in col_indices else 5)
-            trials_idx = col_indices.get("Key Trials / Registry / Patent IDs", 7 if "#" in col_indices else 6)
+            lead_phase_idx = col_indices.get(
+                "Development Phase", 6 if "#" in col_indices else 5
+            )
+            trials_idx = col_indices.get(
+                "Key Trials / Registry / Patent IDs", 7 if "#" in col_indices else 6
+            )
 
             if asset_idx >= len(cols):
                 continue
@@ -131,7 +171,9 @@ def parse_report_table(report_path):
                     "asset_cell": asset_cell,
                     "cleaned_name": clean_cell_to_name(asset_cell),
                     "sponsor": cols[sponsor_idx] if sponsor_idx < len(cols) else "",
-                    "lead_phase": cols[lead_phase_idx] if lead_phase_idx < len(cols) else "",
+                    "lead_phase": cols[lead_phase_idx]
+                    if lead_phase_idx < len(cols)
+                    else "",
                     "trials_cell": cols[trials_idx] if trials_idx < len(cols) else "",
                     "cols": cols,
                 }
