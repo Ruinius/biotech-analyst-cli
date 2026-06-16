@@ -1,15 +1,11 @@
 import random
-from typing import Optional
+
 from rich.console import Console
 from rich.panel import Panel
 
 console = Console()
 
-RABBIT_ART = (
-    "  (\\_/)\n"
-    "  (o-o)   <-- Dr. Hops 👓\n"
-    " c( 🔬)o"
-)
+RABBIT_ART = "  (\\_/)\n" "  (o-o)   <-- Dr. Hops 👓\n" " c( 🔬)o"
 
 BIOTECH_INTERJECTIONS = [
     "By my ribosomes!",
@@ -37,7 +33,7 @@ def speak(text: str, title: str = "Dr. Hops", include_interjection: bool = True)
     """Output a message from Dr. Hops, the nerdy biotech rabbit, with custom speech bubbles."""
     interjection = f"{get_random_interjection()} " if include_interjection else ""
     full_message = f"{interjection}{text}"
-    
+
     # Render rich speech bubble
     speech_panel = Panel(
         full_message,
@@ -45,7 +41,7 @@ def speak(text: str, title: str = "Dr. Hops", include_interjection: bool = True)
         border_style="green",
         expand=False,
     )
-    
+
     console.print()
     console.print(RABBIT_ART)
     console.print(speech_panel)

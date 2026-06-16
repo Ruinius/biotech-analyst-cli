@@ -62,6 +62,7 @@ graph TD
 - **Hallucination Prevention:** The final search logs of each source are saved to raw research files. The data mapping is compiled using a deterministic **append / de-duplicate utility script** (no LLM rewriting of trial data) to ensure 100% data integrity.
 - **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## database-search`.
   COMMENT: this seems too structured... for example, why wouldn't turn 2 just look at the results and generate new terms and perform the search? Turn 4 could do the same but just need to call finalize at the end.
+  COMMENT: all the tools in util/ will need to be refactored into tools that agents can call
 
 ---
 
@@ -88,7 +89,7 @@ graph TD
   - Exclusivity, selectivity constants, safety profiles, and key clinical milestones.
 - **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## web-search`.
   COMMENT: the info from web search should be written in new columns. The existing columns should be immutable to prevent hallucination.
-  COMMENT: if this is going to generate 20+ agents, then pause, tell the user how many agents will be created, and ask for permission.
+  COMMENT: this needs to be designed such that after each 4-turn agent, the alternative names are searched and the relevant entries are marked, so there's no duplicative search efforts for those rows.
 
 ---
 

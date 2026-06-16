@@ -5,14 +5,15 @@ Uses pypdf for rapid text extraction and pdfplumber for robust table extraction,
 outputting formatted markdown, text, or JSON files.
 """
 
-import os
-import sys
 import argparse
 import json
+import sys
 from pathlib import Path
-import pypdf
-import pdfplumber
+
 import pandas as pd
+import pdfplumber
+import pypdf
+
 
 def extract_text_pypdf(pdf_path: Path) -> str:
     """Extract plain text using pypdf for speed and robustness."""
@@ -27,6 +28,7 @@ def extract_text_pypdf(pdf_path: Path) -> str:
         print(f"Error during pypdf text extraction: {e}", file=sys.stderr)
     return "\n".join(text_content)
 
+
 def extract_tables_pdfplumber(pdf_path: Path) -> list:
     """Extract tables using pdfplumber and return them as a list of lists of lists (table rows)."""
     extracted_tables = []
@@ -38,19 +40,29 @@ def extract_tables_pdfplumber(pdf_path: Path) -> list:
                     # Filter out completely empty rows and columns
                     filtered_table = []
                     for row in table:
-                        if any(cell is not None and str(cell).strip() != "" for cell in row):
-                            cleaned_row = [str(cell).replace("\n", " ").strip() if cell is not None else "" for cell in row]
+                        if any(
+                            cell is not None and str(cell).strip() != "" for cell in row
+                        ):
+                            cleaned_row = [
+                                str(cell).replace("\n", " ").strip()
+                                if cell is not None
+                                else ""
+                                for cell in row
+                            ]
                             filtered_table.append(cleaned_row)
-                    
+
                     if filtered_table:
-                        extracted_tables.append({
-                            "page": page_num + 1,
-                            "table_index": table_idx + 1,
-                            "data": filtered_table
-                        })
+                        extracted_tables.append(
+                            {
+                                "page": page_num + 1,
+                                "table_index": table_idx + 1,
+                                "data": filtered_table,
+                            }
+                        )
     except Exception as e:
         print(f"Error during pdfplumber table extraction: {e}", file=sys.stderr)
     return extracted_tables
+
 
 def convert_table_to_markdown(table_data: list) -> str:
     """Convert a raw table list of rows into a clean Markdown table using pandas."""
@@ -58,21 +70,21 @@ def convert_table_to_markdown(table_data: list) -> str:
         return ""
     try:
         # Check if the table has at least one row
-        headers = table_data[0]
-        rows = table_data[1:]
-        
+        table_data[0]
+        table_data[1:]
+
         # Handle cases with single row or mismatched columns
         max_cols = max(len(row) for row in table_data)
-        
+
         # Pad rows to have uniform length
         padded_table = []
         for row in table_data:
             padded_row = row + [""] * (max_cols - len(row))
             padded_table.append(padded_row)
-            
+
         df = pd.DataFrame(padded_table[1:], columns=padded_table[0])
         return df.to_markdown(index=False)
-    except Exception as e:
+    except Exception:
         # Fallback to simple markdown builder
         md = []
         for i, row in enumerate(table_data):
@@ -83,47 +95,55 @@ def convert_table_to_markdown(table_data: list) -> str:
                 md.append(f"| {sep} |")
         return "\n".join(md)
 
-def run_parser(pdf_path: Path, output_path: Path = None, mode: str = "both", output_format: str = "markdown"):
+
+def run_parser(
+    pdf_path: Path,
+    output_path: Path = None,
+    mode: str = "both",
+    output_format: str = "markdown",
+):
     """Orchestrates the extraction process and saves or prints the results."""
     print(f"Processing: {pdf_path.name}")
     print(f"Extraction Mode: {mode} | Output Format: {output_format}")
-    
+
     if not pdf_path.exists():
         print(f"Error: Input file {pdf_path} does not exist.", file=sys.stderr)
         sys.exit(1)
-        
+
     extracted_text = ""
     extracted_tables = []
-    
+
     # 1. Text extraction
     if mode in ["text", "both"]:
         print("Extracting text...")
         extracted_text = extract_text_pypdf(pdf_path)
-        
+
     # 2. Table extraction
     if mode in ["tables", "both"]:
         print("Extracting tables...")
         extracted_tables = extract_tables_pdfplumber(pdf_path)
-        
+
     # 3. Format output
     output_content = ""
     if output_format == "json":
         output_data = {
             "metadata": {
                 "source_file": str(pdf_path),
-                "total_pages": len(pypdf.PdfReader(pdf_path).pages) if mode in ["text", "both"] else "Unknown"
+                "total_pages": len(pypdf.PdfReader(pdf_path).pages)
+                if mode in ["text", "both"]
+                else "Unknown",
             }
         }
         if mode in ["text", "both"]:
             output_data["text"] = extracted_text
         if mode in ["tables", "both"]:
             output_data["tables"] = extracted_tables
-            
+
         output_content = json.dumps(output_data, indent=2)
     else:  # markdown / plain text
         blocks = []
         blocks.append(f"# Analysis Report for {pdf_path.name}\n")
-        
+
         if mode in ["tables", "both"] and extracted_tables:
             blocks.append("## Extracted Quantitative Tables\n")
             for t in extracted_tables:
@@ -131,13 +151,13 @@ def run_parser(pdf_path: Path, output_path: Path = None, mode: str = "both", out
                 md_table = convert_table_to_markdown(t["data"])
                 blocks.append(md_table)
                 blocks.append("")
-                
+
         if mode in ["text", "both"] and extracted_text:
             blocks.append("## Raw Document Text\n")
             blocks.append(extracted_text)
-            
+
         output_content = "\n".join(blocks)
-        
+
     # 4. Save output or print
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,39 +172,45 @@ def run_parser(pdf_path: Path, output_path: Path = None, mode: str = "both", out
             f.write(output_content)
         print(f"Success! Output written to default path: {default_out}")
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Biotech Business Development PDF Parser - Extract Text and Tables into Markdown/JSON."
     )
     parser.add_argument(
-        "-i", "--input", 
-        required=True, 
-        help="Path to the clinical/scientific PDF document."
+        "-i",
+        "--input",
+        required=True,
+        help="Path to the clinical/scientific PDF document.",
     )
     parser.add_argument(
-        "-o", "--output", 
-        default=None, 
-        help="Path to save the output. Defaults to same directory as input with .md/.json extension."
+        "-o",
+        "--output",
+        default=None,
+        help="Path to save the output. Defaults to same directory as input with .md/.json extension.",
     )
     parser.add_argument(
-        "-m", "--mode", 
-        choices=["text", "tables", "both"], 
-        default="both", 
-        help="Extraction target: 'text' (raw text), 'tables' (structured tables), or 'both' (default)."
+        "-m",
+        "--mode",
+        choices=["text", "tables", "both"],
+        default="both",
+        help="Extraction target: 'text' (raw text), 'tables' (structured tables), or 'both' (default).",
     )
     parser.add_argument(
-        "-f", "--format", 
-        choices=["markdown", "json"], 
-        default="markdown", 
-        help="Output format: 'markdown' (default) or 'json'."
+        "-f",
+        "--format",
+        choices=["markdown", "json"],
+        default="markdown",
+        help="Output format: 'markdown' (default) or 'json'.",
     )
-    
+
     args = parser.parse_args()
-    
+
     input_path = Path(args.input)
     output_path = Path(args.output) if args.output else None
-    
+
     run_parser(input_path, output_path, args.mode, args.format)
+
 
 if __name__ == "__main__":
     main()

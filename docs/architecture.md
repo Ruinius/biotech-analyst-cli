@@ -14,16 +14,16 @@ graph TD
     CLI --> folder[Folder Browser]
     CLI --> bdscan[BD Scan Orchestrator]
     CLI --> deepdive[Deep-Dive Pipeline]
-    
+
     bdscan --> Agents[Agent Pipeline: context, db_search, asset_research, synthesis]
     deepdive --> fetch[Subprocess Sourcing Utilities]
-    
+
     fetch --> Registry[ClinicalTrials.gov, CDE Scraper, PubChem, openFDA]
     Agents --> Registry
-    
+
     Agents --> Curator[Curator Agent]
     Curator --> GlobalLearning[Global learning.md in Root]
-    
+
     Agents --> PDF[Markdown-to-PDF Compiler]
     deepdive --> PDF
 ```

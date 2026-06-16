@@ -32,3 +32,34 @@ packages = ["src"]
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "detect-secrets>=1.5.0",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.17",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line length
+    "B904",  # raise from
+    "E741",  # ambiguous variable name
+    "B023",  # loop variable binding
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
-from src.core.exceptions import ConfigNotFoundError, ConfigError
+from src.core.exceptions import ConfigError, ConfigNotFoundError
 
 CONFIG_FILE_PATH = Path(".env")
 
@@ -15,10 +15,12 @@ def get_default_desktop() -> str:
 class Settings(BaseModel):
     full_name: str = Field(..., description="Full name of the user")
     email: str = Field(..., description="Email address of the user")
-    base_folder: str = Field(default_factory=get_default_desktop, description="Base directory for targets")
-    gemini_api_key: Optional[str] = Field(None, description="Gemini API Key")
-    openrouter_api_key: Optional[str] = Field(None, description="OpenRouter API Key")
-    deepseek_api_key: Optional[str] = Field(None, description="DeepSeek API Key")
+    base_folder: str = Field(
+        default_factory=get_default_desktop, description="Base directory for targets"
+    )
+    gemini_api_key: str | None = Field(None, description="Gemini API Key")
+    openrouter_api_key: str | None = Field(None, description="OpenRouter API Key")
+    deepseek_api_key: str | None = Field(None, description="DeepSeek API Key")
 
 
 def config_exists() -> bool:
@@ -28,7 +30,7 @@ def config_exists() -> bool:
     try:
         required_keys = {"full_name", "email"}
         found_keys = set()
-        with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
+        with open(CONFIG_FILE_PATH, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -50,7 +52,7 @@ def load_config() -> Settings:
         )
     try:
         data = {}
-        with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
+        with open(CONFIG_FILE_PATH, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -68,11 +70,11 @@ def load_config() -> Settings:
                         data[key] = None
                     else:
                         data[key] = value
-        
+
         # Backwards compatibility and fallbacks
         if "base_folder" not in data or not data["base_folder"]:
             data["base_folder"] = get_default_desktop()
-            
+
         return Settings(**data)
     except Exception as e:
         raise ConfigError(f"Failed to load configuration: {str(e)}")
@@ -91,7 +93,7 @@ def save_config(settings: Settings) -> None:
         raise ConfigError(f"Failed to save configuration: {str(e)}")
 
 
-def mask_key(key: Optional[str]) -> str:
+def mask_key(key: str | None) -> str:
     """Mask a sensitive API key, revealing only a small prefix and suffix."""
     if not key:
         return "Not Set"

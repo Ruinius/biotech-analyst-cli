@@ -11,6 +11,8 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
 - `.gitignore`: Git ignored files.
 - `README.md`: Basic usage, installation, and commands documentation.
 - `AGENTS.md`: Architectural index, guidelines, and rules (this file).
+- `.pre-commit-config.yaml`: Configuration file for git pre-commit/pre-push hooks.
+- `.secrets.baseline`: Yelps detect-secrets baseline file representing approved false positives.
 - `docs/`: Technical specifications and architectural guides.
   - `docs/architecture.md`: System design and directory layout.
   - `docs/cli_spec.md`: CLI interface inputs, parameters, and command behaviors.
@@ -64,3 +66,8 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
    - Playwright requirements for CDE queries require execution of `playwright install chromium` inside the environment.
 4. **Report Validation & Integrity**:
    - Landscape table and final PDF generations are strictly audited using `validate_report.py` to check for hallucinated IDs or data omissions.
+5. **Linting & Secret Protection**:
+   - Automated code formatting and lint checks are executed via `ruff`.
+   - Secret scanning checks are executed via `detect-secrets` against `.secrets.baseline`.
+   - Git push triggers these checks automatically if hooks are installed. Run `uv run pre-commit install --hook-type pre-push` to set them up locally.
+
