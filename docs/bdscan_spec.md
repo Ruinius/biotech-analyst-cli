@@ -6,7 +6,9 @@ This specification details the agentic refactor for the `ba bdscan` pipeline. Th
 
 ## 1. Pipeline Architecture & Orchestration
 
-The pipeline is managed by a central **BD Scan Orchestrator** (`src/agents/bdscan/orchestrator.py`) which sequences five distinct agents and one data-compiling utility script.
+The pipeline is managed by a central **BD Scan Orchestrator** (`src/core/bdscan_orchestrator.py`) which sequences five distinct agents and one data-compiling utility script.
+COMMENT: move bdscan and deepdive out of main and into their separate files in core/
+COMMENT: for bdscan and deepdive, leave a bdscan_orchestrator and deepdive_orchestrator in core/ and create bdscan_agents and deepdive_agents folders to house each individual agent
 
 ```mermaid
 graph TD

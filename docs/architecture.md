@@ -45,19 +45,21 @@ biotech-analyst-cli/
 │   │   └── main.py                 # Command router and main execution loop
 │   ├── core/                       # Shared configurations and exceptions
 │   │   ├── config.py               # Pydantic configuration loaded from .env
-│   │   └── exceptions.py           # Custom exception definitions
+│   │   ├── exceptions.py           # Custom exception definitions
+│   │   ├── bdscan_orchestrator.py  # Orchestrator for the BD Scan agents
+│   │   └── deepdive_orchestrator.py # Orchestrator for the Deep Dive agents
 │   ├── services/                   # Unified API services
 │   │   └── llm_client.py           # Gemini, OpenRouter, and DeepSeek client
 │   ├── agents/                     # Multi-Agent workflows
-│   │   └── bdscan/                 # Pathway Broad Scan agent directory
-│   │       ├── orchestrator.py     # Sequencer for the BD Scan agents
-│   │       ├── context_agent.py    # 1-turn scientific context compiler
-│   │       ├── db_search_agent.py  # 4-turn database search coordinator
-│   │       ├── compile_landscape.py# Script consolidating database outputs
-│   │       ├── asset_research_agent.py # 4-turn row-specific web researcher
-│   │       ├── synthesis_agent.py  # 10-turn executive report synthesizer
-│   │       └── curator_agent.py    # Stage-end compiler of global learnings
-│   ├── utils/                      # Programmatic fetchers and parsers
+│   │   ├── bdscan_agents/          # Pathway Broad Scan agent directory
+│   │   │   ├── context_agent.py    # 1-turn scientific context compiler
+│   │   │   ├── db_search_agent.py  # 4-turn database search coordinator
+│   │   │   ├── compile_landscape.py # Script consolidating database outputs
+│   │   │   ├── asset_research_agent.py # 4-turn row-specific web researcher
+│   │   │   ├── synthesis_agent.py  # 10-turn executive report synthesizer
+│   │   │   └── curator_agent.py    # Stage-end compiler of global learnings
+│   │   └── deepdive_agents/        # Deep-dive agent directory
+│   └── utils/                      # Programmatic fetchers and parsers
 │   │   ├── formatting.py           # Dr. Hops speech bubbles and Rich console
 │   │   ├── parse_pdf.py            # PDF text and table extractor
 │   │   ├── fetch_clinicaltrials.py # ClinicalTrials.gov query API
