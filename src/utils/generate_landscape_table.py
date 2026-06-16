@@ -182,7 +182,8 @@ def parse_existing_report(report_path, config):
                         if (
                             name_clean
                             and len(name_clean) >= 3
-                            and not should_exclude(name_clean)
+                            and any(c.isalpha() for c in name_clean)
+                            and not name_clean.isdigit()
                         ):
                             # Add to aliases if not already the primary key or in aliases
                             if (
@@ -213,751 +214,273 @@ def parse_existing_report(report_path, config):
     return metadata
 
 
-EXCLUDE_LOWER = {
-    "placebo",
-    "chemotherapy",
-    "chemo",
-    "standard of care",
-    "investigator choice",
-    "investigator's choice",
-    "paclitaxel",
-    "docetaxel",
-    "nab-paclitaxel",
-    "gemcitabine",
-    "oxaliplatin",
-    "capecitabine",
-    "cisplatin",
-    "carboplatin",
-    "pembrolizumab",
-    "nivolumab",
-    "sintilimab",
-    "toripalimab",
-    "dostarlimab",
-    "ramucirumab",
-    "leucovorin",
-    "fluorouracil",
-    "5-fluorouracil",
-    "5-fu",
-    "irinotecan",
-    "liposomal irinotecan",
-    "folflri",
-    "folfiri",
-    "folfox",
-    "mfolfox6",
-    "folfirinox",
-    "mfolfirinox",
-    "capox",
-    "flot",
-    "radiation",
-    "surgery",
-    "saline",
-    "dexamethasone",
-    "prednisone",
-    "ondansetron",
-    "aprepitant",
-    "normal saline",
-    "control",
-    "chemotherapies",
-    "placebos",
-    "combination",
-    "combo",
-    "regimen",
-    "antibody",
-    "cart",
-    "car-t",
-    "adc",
-    "bi-specific",
-    "bispecific",
-    "monoclonal",
-    "recombinant",
-    "infusion",
-    "injection",
-    "therapy",
-    "cell",
-    "cells",
-    "autologous",
-    "vaccine",
-    "dendritic",
-    "peptides",
-    "peptide",
-    "vector",
-    "plasmid",
-    "imaging",
-    "agent",
-    "agents",
-    "pet",
-    "tracer",
-    "redirected",
-    "engineered",
-    "chimeric",
-    "targeting",
-    "positive",
-    "expressing",
-    "negative",
-    "expression",
-    "high-expressing",
-    "low-expressing",
-    "positive-expression",
-    "durvalumab",
-    "atezolizumab",
-    "avelumab",
-    "ipilimumab",
-    "tremelimumab",
-    "penpulimab",
-    "camrelizumab",
-    "adebrelimab",
-    "retifanlimab",
-    "zimberelimab",
-    "serplulimab",
-    "pucoclimab",
-    "adegrelimab",
-    "tislelizumab",
-    "cadonilimab",
-    "cardonilizumab",
-    "trastuzumab",
-    "pertuzumab",
-    "bevacizumab",
-    "cetuximab",
-    "panitumumab",
-    "erlotinib",
-    "gefitinib",
-    "afatinib",
-    "osimertinib",
-    "lapatinib",
-    "neratinib",
-    "tucatinib",
-    "folinic",
-    "folinic acid",
-    "l-leucovorin",
-    "leucovorin calcium",
-    "folic acid",
-    "folate",
-    "zoledronic",
-    "zoledronic acid",
-    "denosumab",
-    "fosaprepitant",
-    "granisetron",
-    "palonosetron",
-    "pegfilgrastim",
-    "filgrastim",
-    "tancolux",
-    "epirubicin",
-    "doxorubicin",
-    "methotrexate",
-    "cyclophosphamide",
-    "fludarabine",
-    "etoposide",
-    "vincristine",
-    "vinblastine",
-    "vinorelbine",
-    "temozolomide",
-    "dacarbazine",
-    "procarbazine",
-    "carmustine",
-    "lomustine",
-    "streptozocin",
-    "mitomycin",
-    "bleomycin",
-    "dactinomycin",
-    "daunorubicin",
-    "idarubicin",
-    "mitoxantrone",
-    "plicamycin",
-    "hydroxyurea",
-    "asparaginase",
-    "pegaspargase",
-    "bortezomib",
-    "carfilzomib",
-    "ixazomib",
-    "thalidomide",
-    "lenalidomide",
-    "pomalidomide",
-    "olaparib",
-    "rucaparib",
-    "niraparib",
-    "talazoparib",
-    "veliparib",
-    "fruquintinib",
-    "surufatinib",
-    "donafenib",
-    "regorafenib",
-    "sorafenib",
-    "sunitinib",
-    "pazopanib",
-    "axitinib",
-    "cabozantinib",
-    "lenvatinib",
-    "vandetanib",
-    "nintedanib",
-    "tivozanib",
-    "alectinib",
-    "crizotinib",
-    "ceritinib",
-    "brigatinib",
-    "lorlatinib",
-    "dabrafenib",
-    "vemurafenib",
-    "encorafenib",
-    "trametinib",
-    "cobimetinib",
-    "binimetinib",
-    "selumetinib",
-    "everolimus",
-    "temsirolimus",
-    "sirolimus",
-    "sox",
-    "xelox",
-    "folfoxiri",
-    "folfox4",
-    "folfox6",
-    "mfolfox",
-    "gemcitabine+albumin-bound",
-    "gemcitabine+nab-paclitaxel",
-    "gem/nab-paclitaxel",
-    "gem-abx",
-    "albumin-bound",
-    "abraxane",
-    "keytruda",
-    "opdivo",
-    "tecentriq",
-    "imfinzi",
-    "libtayo",
-    "jemperli",
-    "erbitux",
-    "vectibix",
-    "avastin",
-    "cyramza",
-    "herceptin",
-    "perjeta",
-    "kadcyla",
-    "enhertu",
-    "alunbrig",
-    "alecensa",
-    "xalkori",
-    "zykadia",
-    "lorbrena",
-    "tafinlar",
-    "zelboraf",
-    "braftovi",
-    "mekinist",
-    "cotellic",
-    "mektovi",
-    "koselugo",
-    "afinitor",
-    "torisel",
-    "rapamune",
-    "inlyta",
-    "sutent",
-    "votrient",
-    "nexavar",
-    "stivarga",
-    "caprelsa",
-    "lartruvo",
-    "portrazza",
-    "xofigo",
-    "ziga",
-    "yondelis",
-    "halaven",
-    "ixempra",
-    "elsparc",
-    "erwinase",
-    "oncaspar",
-    "velcade",
-    "kyprolis",
-    "ninlaro",
-    "thalomid",
-    "revlimid",
-    "pomalyst",
-    "lynparza",
-    "rubraca",
-    "zejula",
-    "talzenna",
-    "eluate",
-    "support",
-    "care",
-    "assignment",
-    "single",
-    "group",
-    "open-label",
-    "dose-escalation",
-    "escalation",
-    "expansion",
-    "dose",
-    "cohort",
-    "arm",
-    "randomized",
-    "double-blind",
-    "efficacy",
-    "safety",
-    "tolerability",
-    "pharmacokinetics",
-    "bioavailability",
-    "pharmacodynamics",
-    "immunogenicity",
-    "maximum",
-    "tolerated",
-    "dose-limiting",
-    "toxicity",
-    "toxicities",
-    "adverse",
-    "events",
-    "reaction",
-    "reactions",
-    "syndicated",
-    "registry",
-    "scraped",
-    "scrape",
-    "scraping",
-    "scrub",
-    "clean",
-    "format",
-    "report",
-    "document",
-    "file",
-    "json",
-    "txt",
-    "md",
-    "pdf",
-    "html",
-    "xml",
-    "csv",
-    "insulin",
-    "lispro",
-    "humalog",
-    "novolog",
-    "apidra",
-    "fiasp",
-    "lyumjev",
-    "admelog",
-    # Additional background TKIs, antibodies, and chemo components to exclude
-    "apatinib",
-    "anlotinib",
-    "anrotinib",
-    "tqb2450",
-    "shr-1701",
-    "shr1701",
-    "shr-a1811",
-    "shra1811",
-    "volrustomig",
-    "tas-102",
-    "tas102",
-    "tegafur",
-    "trifluridine",
-    "insul",
-    "p037",
-    "interleukin",
-    "ds-8201a",
-    "ds8201a",
-    "trastuzumab deruxtecan",
-    "ibi315",
-    "ibi-315",
-    "pd-1",
-    "pd1",
-    "pd-l1",
-    "pdl1",
-    "ctla-4",
-    "ctla4",
-    "onivyde",
-    "nanoliposomal",
-    "liposomal",
-    "s-1",
-    "s1",
-    "fluorouracil injection",
-    "paclitaxel albumin",
-    "capecitabine tablets",
-    "placebo matching",
-    "chemotherapy regimen",
-}
+def classify_interventions(
+    names: list,
+    target_name: str,
+    target_synonyms: list | None = None,
+    batch_size: int = 50,
+) -> set:
+    """
+    Use the configured LLM to classify raw intervention names from clinical
+    trial registries as pipeline assets or background/comparator agents.
 
-TARGET_TERMS = {
-    "cldn",
-    "claudin",
-    "cldn18",
-    "claudin18",
-    "cldn182",
-    "claudin182",
-    "cld18",
-    "cldn-18",
-    "claudin-18",
-    "cldn18.2",
-    "claudin18.2",
-    "claudin-18.2",
-    "cldn-18.2",
-    "claudin 18.2",
-    "cldn 18.2",
-    "cld182",
-    "紧密连接蛋白18.2",
-    "紧密蛋白18.2",
-    "克劳丁18.2",
-    "连接蛋白18.2",
-    "重组抗紧密连接蛋白18.2",
-    "重组抗紧密连接蛋白18.2-药物偶联物",
-    "重组抗紧密连接蛋白18.2 -依戏替康偶联物",
-}
+    Returns the set of names (original casing) classified as pipeline assets
+    that target `target_name`.
 
-GENERIC_WORDS = {
-    "placebo",
-    "chemotherapy",
-    "standard of care",
-    "investigator choice",
-    "investigator's choice",
-    "radiation",
-    "surgery",
-    "saline",
-    "control",
-    "combination",
-    "combo",
-    "regimen",
-    "antibody",
-    "cart",
-    "car-t",
-    "adc",
-    "bi-specific",
-    "bispecific",
-    "monoclonal",
-    "recombinant",
-    "infusion",
-    "injection",
-    "therapy",
-    "cell",
-    "cells",
-    "autologous",
-    "vaccine",
-    "dendritic",
-    "peptides",
-    "peptide",
-    "vector",
-    "plasmid",
-    "imaging",
-    "agent",
-    "agents",
-    "pet",
-    "tracer",
-    "redirected",
-    "engineered",
-    "chimeric",
-    "targeting",
-    "positive",
-    "expressing",
-    "negative",
-    "expression",
-    "high-expressing",
-    "low-expressing",
-    "positive-expression",
-    "support",
-    "care",
-    "assignment",
-    "single",
-    "group",
-    "open-label",
-    "dose-escalation",
-    "escalation",
-    "expansion",
-    "dose",
-    "cohort",
-    "arm",
-    "randomized",
-    "double-blind",
-    "efficacy",
-    "safety",
-    "tolerability",
-    "pharmacokinetics",
-    "bioavailability",
-    "pharmacodynamics",
-    "immunogenicity",
-    "chemo",
-    "placebos",
-    "comb",
-    "regim",
-}
+    Raises RuntimeError on any LLM failure — no silent fallback.
+    """
+    # Deferred import: ensure the project root is on sys.path when
+    # generate_landscape_table.py is run as a subprocess from the project root.
+    _proj_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    if _proj_root not in sys.path:
+        sys.path.insert(0, _proj_root)
+    from src.services.llm_client import LLMClient  # noqa: PLC0415
 
+    synonyms = target_synonyms or []
+    synonyms_str = ", ".join(synonyms) if synonyms else target_name
 
-def has_valid_drug_code(name):
-    if not name:
-        return False
-    name_lower = name.lower()
+    # Deduplicate: case-insensitive key → preserve first-seen casing
+    seen_lower: dict = {}
+    for n in names:
+        stripped = n.strip()
+        key = stripped.lower()
+        if stripped and key not in seen_lower:
+            seen_lower[key] = stripped
+    unique_names = list(seen_lower.values())
 
-    # Check if there is any word ending in mab/tug/mig/bart/cept/tib/can
-    for w in re.findall(r"[a-z]{3,20}(?:mab|tug|mig|bart|cept|tib|can)\b", name_lower):
-        if w not in EXCLUDE_LOWER and w not in TARGET_TERMS:
-            return True
+    if not unique_names:
+        return set()
 
-    # Check for known drug name substrings
-    for k in [
-        "zolbet",
-        "osem",
-        "vyloy",
-        "spevat",
-        "givas",
-        "greson",
-        "sones",
-        "satric",
-        "satri",
-        "ribomab",
-    ]:
-        if k in name_lower:
-            return True
+    client = LLMClient()
+    asset_names: set = set()
 
-    # Clean the string by replacing target terms, generic words, and exclude words with spaces
-    cleaned = name_lower
-    for target in TARGET_TERMS:
-        cleaned = re.sub(r"\b" + re.escape(target) + r"\b", " ", cleaned)
-        if len(target) > 5:
-            cleaned = cleaned.replace(target, " ")
+    total_batches = (len(unique_names) + batch_size - 1) // batch_size
+    print(
+        f"\nClassifying {len(unique_names)} unique intervention name(s) via LLM "
+        f"({total_batches} batch(es) of ≤{batch_size})..."
+    )
 
-    for gw in GENERIC_WORDS:
-        cleaned = re.sub(r"\b" + re.escape(gw) + r"\b", " ", cleaned)
+    for batch_idx in range(total_batches):
+        batch = unique_names[batch_idx * batch_size : (batch_idx + 1) * batch_size]
+        batch_json = json.dumps(batch, ensure_ascii=False)
 
-    for ex in EXCLUDE_LOWER:
-        cleaned = re.sub(r"\b" + re.escape(ex) + r"\b", " ", cleaned)
-
-    # Extract any remaining word tokens
-    tokens = re.findall(r"[a-z0-9\-]{3,15}", cleaned)
-    for t in tokens:
-        t_clean = t.strip("-")
-        if len(t_clean) < 3:
-            continue
-        # Check if the token contains a letter and a digit (like JS107, SHR-A1904, AMG910, AMG-910, AZD6422)
-        has_letter = any(c.isalpha() for c in t_clean)
-        has_digit = any(c.isdigit() for c in t_clean)
-        if has_letter and has_digit:
-            return True
-        # Or check if it's a known code prefix followed by a space-separated number
-        if t_clean.isalpha() and len(t_clean) in [3, 4]:
-            pattern = re.escape(t_clean) + r"\s+\d+"
-            if re.search(pattern, name_lower):
-                return True
-
-    return False
-
-
-def should_exclude(name):
-    if not name:
-        return True
-    name_lower = name.lower().strip()
-
-    # If the name is exactly in EXCLUDE_LOWER, exclude it
-    if name_lower in EXCLUDE_LOWER:
-        return True
-
-    # If the name is exactly a target term, exclude it
-    if name_lower in TARGET_TERMS:
-        return True
-
-    # If it contains a valid drug code, do NOT exclude it!
-    if has_valid_drug_code(name):
-        return False
-
-    # Otherwise, exclude if it contains target terms
-    for target in TARGET_TERMS:
-        if target in name_lower:
-            return True
-
-    # Check if any excluded word is in the name
-    for ex in EXCLUDE_LOWER:
-        if re.search(r"\b" + re.escape(ex) + r"\b", name_lower):
-            return True
-
-    # Check other generic phrases
-    for phrase in [
-        "standard of care",
-        "investigator choice",
-        "investigator's choice",
-        "normal saline",
-        "placebo matching",
-        "albumin-bound",
-        "insul",
-        "interleukin",
-        "tas-102",
-        "tas102",
-        "5-fu",
-        "s-1",
-        "pd-1",
-        "pd-l1",
-        "ctla-4",
-        "chemotherapy",
-        "placebo",
-    ]:
-        if phrase in name_lower:
-            return True
-
-    return False
-
-
-def get_name_priority(name):
-    name_lower = name.lower()
-    if any(
-        k in name_lower
-        for k in [
-            "claudin",
-            "cldn",
-            "generic",
-            "placebo",
-            "chemo",
-            "support",
-            "assignment",
-            "therapy",
-        ]
-    ):
-        return 10
-    if any(
-        k in name_lower
-        for k in ["tavatecan", "deruxtecan", "rezetecan", "vedotin", "payload"]
-    ):
-        return 6
-    if name_lower in [
-        "zolbetuximab",
-        "vyloy",
-        "osemitamab",
-        "givastomig",
-        "spevatamig",
-        "sonesitatug",
-    ]:
-        return 0
-    if (
-        name_lower.endswith("mab")
-        or name_lower.endswith("tug")
-        or name_lower.endswith("mig")
-        or name_lower.endswith("bart")
-    ):
-        return 0
-    if re.search(r"^[a-z]{2,4}-?\d{3,5}", name_lower):
-        return 1
-    return 5
-
-
-def clean_drug_name(name):
-    if not name:
-        return ""
-    name = re.sub(r"<[^>]+>", " ", name)
-    parts = re.split(r"[\+\/]|联合|和", name)
-    for part in parts:
-        part_clean = part.strip()
-        codes = re.findall(r"[A-Za-z0-9\-]{3,15}", part_clean)
-        valid_codes = []
-        for c in codes:
-            c_lower = c.lower()
-            c_alnum = re.sub(r"[^a-z0-9]", "", c_lower)
-            if should_exclude(c):
-                continue
-            if c_lower in TARGET_TERMS or c_alnum in TARGET_TERMS:
-                continue
-            if any(gw in c_lower for gw in GENERIC_WORDS):
-                continue
-            if len(c) < 3:
-                continue
-            has_letter = any(char.isalpha() for char in c)
-            has_digit = any(char.isdigit() for char in c)
-            is_known_name = any(
-                k in c_lower
-                for k in [
-                    "zolbet",
-                    "osem",
-                    "vyloy",
-                    "spevat",
-                    "givas",
-                    "greson",
-                    "sones",
-                    "satric",
-                    "satri",
-                    "ribomab",
-                ]
-            )
-            if (
-                (has_letter and has_digit)
-                or is_known_name
-                or (
-                    len(c) >= 5
-                    and (
-                        c_lower.endswith("mab")
-                        or c_lower.endswith("tib")
-                        or c_lower.endswith("cept")
-                        or c_lower.endswith("can")
-                    )
-                )
-            ):
-                c_clean = c.strip("-").strip()
-                if c_clean and not should_exclude(c_clean):
-                    valid_codes.append(c_clean)
-        if valid_codes:
-            return valid_codes[0]
-
-    first_part = parts[0].strip()
-    first_part = re.sub(r"\(.*?\)", "", first_part)
-    first_part = re.sub(r"（.*?）", "", first_part)
-    for prefix in ["注射用", "重组人源化", "单克隆抗体", "自体", "细胞", "注射液"]:
-        first_part = first_part.replace(prefix, "")
-    first_part = first_part.replace("抗体", "")
-    first_part_clean = first_part.strip()
-
-    if not should_exclude(first_part_clean):
-        if re.search(r"[\u4e00-\u9fff]", first_part_clean):
-            eng_words = re.findall(r"[A-Za-z0-9\-]{3,15}", first_part_clean)
-            if eng_words:
-                ret = eng_words[0]
-                if not should_exclude(ret):
-                    return ret
-        else:
-            return first_part_clean
-    return ""
-
-
-def extract_china_drug(drug_name):
-    if not drug_name:
-        return ""
-    # Split parenthetical suffix first
-    main_part = re.split(r"[\(（]", drug_name)[0].strip()
-    cleaned = clean_drug_name(main_part)
-    if cleaned:
-        return cleaned
-    codes = re.findall(r"[A-Za-z0-9\-]{3,15}", drug_name)
-    for c in codes:
-        if should_exclude(c):
-            continue
-        c_lower = c.lower()
-        c_alnum = re.sub(r"[^a-z0-9]", "", c_lower)
-        if c_lower in TARGET_TERMS or c_alnum in TARGET_TERMS:
-            continue
-        if any(gw in c_lower for gw in GENERIC_WORDS):
-            continue
-        has_letter = any(char.isalpha() for char in c)
-        has_digit = any(char.isdigit() for char in c)
-        is_known_name = any(
-            k in c_lower
-            for k in [
-                "zolbet",
-                "osem",
-                "vyloy",
-                "spevat",
-                "givas",
-                "greson",
-                "sones",
-                "satric",
-                "satri",
-                "ribomab",
-            ]
+        prompt = (
+            f"You are classifying pharmaceutical intervention names from clinical trial registries.\n\n"
+            f"Research target: {target_name}\n"
+            f"Target synonyms: {synonyms_str}\n\n"
+            f"Classify each name in the JSON array below as either:\n"
+            f'  "asset"      — a novel/investigational drug, biologic, or cell therapy '
+            f"that is DIRECTED AT {target_name} as its primary target "
+            f"(includes mAbs, ADCs, bispecifics, CAR-T, small molecules, fusion proteins, etc.)\n"
+            f'  "background" — anything NOT a novel targeted therapy against {target_name}: '
+            f"approved comparators, chemotherapy backbones, standard-of-care regimens, "
+            f"supportive care drugs, placebos, procedural descriptions, device names, "
+            f"generic drug class terms, or descriptions of the target protein itself\n\n"
+            f"Input names:\n{batch_json}\n\n"
+            f"Respond ONLY with a valid JSON object with exactly two keys:\n"
+            f'  "asset": [ ...names classified as pipeline assets... ]\n'
+            f'  "background": [ ...names classified as background/comparator agents... ]\n'
+            f"Every input name must appear in exactly one array. No explanation, no other text."
         )
+
+        system_instruction = (
+            "You are a biotech drug classification expert with deep knowledge of "
+            "pharmaceutical naming conventions, clinical trial nomenclature, and "
+            "approved global drugs. Output only valid JSON with no markdown fencing. "
+            "When uncertain, classify as 'background'. "
+            "Novel investigational assets typically have alphanumeric codes "
+            "(e.g. AMG910, SHR-A1904, AZD6422) or USAN/INN stems "
+            "(-mab, -tib, -cept, -mig, -can, -bart) with a sponsor-specific prefix "
+            "that does not match any approved drug name."
+        )
+
+        response = client.query(prompt, system_instruction)
+
         if (
-            (has_letter and has_digit)
-            or is_known_name
-            or (len(c) >= 5 and c_lower.endswith("mab"))
+            not response
+            or response.startswith("Error:")
+            or response.startswith("Failed to call")
         ):
-            c_clean = c.strip("-").strip()
-            if c_clean and not should_exclude(c_clean):
-                return c_clean
-    return ""
+            raise RuntimeError(
+                f"LLM intervention classification failed for batch "
+                f"{batch_idx + 1}/{total_batches}: {response}"
+            )
+
+        # Strip markdown code fences if the LLM wrapped the output
+        clean_response = response.strip()
+        if clean_response.startswith("```"):
+            clean_response = re.sub(r"^```[a-z]*\n?", "", clean_response)
+            clean_response = re.sub(r"\n?```$", "", clean_response.strip())
+
+        try:
+            result = json.loads(clean_response)
+            classified_assets: list = result.get("asset", [])
+            classified_background: list = result.get("background", [])
+        except (json.JSONDecodeError, KeyError) as exc:
+            raise RuntimeError(
+                f"LLM returned unparseable JSON for batch "
+                f"{batch_idx + 1}/{total_batches}: {exc}\n"
+                f"Raw response (first 400 chars): {response[:400]}"
+            ) from exc
+
+        print(
+            f"  [Classifier] Batch {batch_idx + 1}/{total_batches}: "
+            f"{len(classified_assets)} asset(s), "
+            f"{len(classified_background)} background agent(s)"
+        )
+        for name in classified_assets:
+            print(f"    ✓ ASSET      : {name}")
+        for name in classified_background:
+            print(f"    ✗ background : {name}")
+
+        asset_names.update(classified_assets)
+
+    return asset_names
 
 
-def discover_config(ct_data, china_data):
-    groups = []
+def _name_priority(name: str) -> tuple:
+    """
+    Sorting key for selecting the canonical primary name from a synonym group.
+    Lower tuple value → higher priority.
 
-    def add_synonyms(names_list):
-        names_clean = []
-        for n in names_list:
-            cleaned = clean_drug_name(n)
-            if cleaned and len(cleaned) >= 3 and not should_exclude(cleaned):
-                names_clean.append(cleaned)
+    Priority:
+      0 — Alphanumeric code (contains both letters and digits, e.g. AMG910, SHR-A1904)
+      1 — USAN/INN stem (-mab, -tib, -cept, -mig, -can, -bart, -vir, -kin)
+      2 — Everything else (longer names slightly preferred over shorter)
+    """
+    name_lower = name.lower()
+    has_letter = any(c.isalpha() for c in name)
+    has_digit = any(c.isdigit() for c in name)
 
+    if has_letter and has_digit:
+        return (0, -len(name), name)
+
+    usan_stems = ("mab", "tib", "cept", "mig", "can", "bart", "vir", "kin")
+    if any(name_lower.endswith(s) for s in usan_stems):
+        return (1, -len(name), name)
+
+    return (2, -len(name), name)
+
+
+def discover_config(
+    ct_data: dict,
+    china_data: list,
+    target_name: str = "",
+    target_synonyms: list | None = None,
+) -> dict:
+    """
+    Discover pipeline assets from raw registry data using LLM-based classification.
+
+    All unique intervention names from ClinicalTrials.gov, China CDE, and
+    conference abstract files are collected, deduplicated, and classified in
+    batched LLM calls. Only names classified as pipeline assets targeting
+    `target_name` are retained for the landscape table.
+
+    Raises RuntimeError if LLM classification fails (no silent fallback).
+    """
+    import glob  # noqa: PLC0415
+
+    target_synonyms = target_synonyms or []
+
+    # -----------------------------------------------------------------------
+    # 1. Collect (primary_name, [aliases]) pairs from ClinicalTrials.gov
+    # -----------------------------------------------------------------------
+    ct_interventions: list = []  # list of (primary_name, [other_names])
+    for _nct_id, study in ct_data.items():
+        proto = study.get("protocolSection", {})
+        arms_mod = proto.get("armsInterventionsModule", {})
+        for intv in arms_mod.get("interventions", []):
+            intv_type = intv.get("type", "").upper()
+            if intv_type in ["DRUG", "BIOLOGICAL", "GENETIC"]:
+                name = intv.get("name", "").strip()
+                other_names = [
+                    n.strip() for n in intv.get("otherNames", []) if n.strip()
+                ]
+                if name:
+                    ct_interventions.append((name, other_names))
+
+    # -----------------------------------------------------------------------
+    # 2. Collect raw drug names from China CDE
+    # -----------------------------------------------------------------------
+    china_names: list = []
+    for rec in china_data:
+        drug_name = rec.get("drug_name", "").strip()
+        if drug_name:
+            china_names.append(drug_name)
+
+    # -----------------------------------------------------------------------
+    # 3. Collect candidate codes from conference abstract files
+    #    Targets alphanumeric drug codes (e.g. AZD6422, AHT-102, BNT141)
+    # -----------------------------------------------------------------------
+    conf_codes: list = []
+    search_dirs = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tmp"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tmp"),
+        os.path.join(os.getcwd(), "tmp"),
+    ]
+    seen_conf_paths: set = set()
+    for s_dir in search_dirs:
+        if not os.path.exists(s_dir):
+            continue
+        for filepath in glob.glob(os.path.join(s_dir, "*conferences*.json")):
+            abs_path = os.path.abspath(filepath)
+            if abs_path in seen_conf_paths:
+                continue
+            seen_conf_paths.add(abs_path)
+            try:
+                with open(filepath, encoding="utf-8") as f:
+                    conf_data = json.load(f)
+                for item in conf_data.get("results", []):
+                    title = item.get("title", "")
+                    # Extract tokens that look like drug/compound codes:
+                    # 2-6 letters, optional hyphen, 2-6 digits, optional trailing letter
+                    codes = re.findall(r"\b[A-Za-z]{2,6}-?\d{2,6}[A-Za-z]?\b", title)
+                    conf_codes.extend(codes)
+            except Exception as e:
+                print(
+                    f"Warning: Failed to process conference file {filepath}: {e}"
+                )
+
+    # -----------------------------------------------------------------------
+    # 4. Build flat list of all unique names for classification
+    # -----------------------------------------------------------------------
+    all_raw: list = []
+    for primary, aliases in ct_interventions:
+        all_raw.append(primary)
+        all_raw.extend(aliases)
+    all_raw.extend(china_names)
+    all_raw.extend(conf_codes)
+
+    if not all_raw:
+        print("No intervention names found in registry data.")
+        return {}
+
+    # -----------------------------------------------------------------------
+    # 5. LLM-based classification — one call per batch of 50 unique names
+    # -----------------------------------------------------------------------
+    classified_asset_names = classify_interventions(
+        all_raw, target_name, target_synonyms
+    )
+    classified_lower: set = {n.lower() for n in classified_asset_names}
+
+    print(
+        f"\nClassification complete: {len(classified_asset_names)} pipeline asset(s) "
+        f"identified from {len({n.lower() for n in all_raw})} unique name(s)."
+    )
+
+    # -----------------------------------------------------------------------
+    # 6. Group synonym clusters — only for names classified as assets
+    # -----------------------------------------------------------------------
+    groups: list = []
+
+    def add_synonyms(names_list: list) -> None:
+        names_clean = [
+            n.strip()
+            for n in names_list
+            if n.strip() and n.strip().lower() in classified_lower
+        ]
         if not names_clean:
             return
 
@@ -974,97 +497,165 @@ def discover_config(ct_data, china_data):
                 new_group.update(groups.pop(idx))
             groups.append(new_group)
 
-    # 1. Process ClinicalTrials.gov
-    for _nct_id, study in ct_data.items():
-        proto = study.get("protocolSection", {})
-        arms_mod = proto.get("armsInterventionsModule", {})
+    for primary, aliases in ct_interventions:
+        add_synonyms([primary] + aliases)
 
-        for intv in arms_mod.get("interventions", []):
-            intv_type = intv.get("type", "").upper()
-            if intv_type in ["DRUG", "BIOLOGICAL", "GENETIC"]:
-                name = intv.get("name", "")
-                other_names = intv.get("otherNames", [])
+    for drug_name in china_names:
+        add_synonyms([drug_name])
 
-                if name.lower() not in EXCLUDE_LOWER:
-                    trial_drugs = [name]
-                    for on in other_names:
-                        if on.lower() not in EXCLUDE_LOWER:
-                            trial_drugs.append(on)
-                    add_synonyms(trial_drugs)
+    for code in conf_codes:
+        add_synonyms([code])
 
-    # 2. Process China Drug Trials
-    for rec in china_data:
-        drug_name = rec.get("drug_name", "")
-        extracted = extract_china_drug(drug_name)
-        if extracted:
-            add_synonyms([extracted])
-
-    # 3. Process Conferences for preclinical/early clinical assets (e.g. AZD6422, AHT-102)
-    import glob
-
-    search_dirs = [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tmp"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tmp"),
-        os.path.join(os.getcwd(), "tmp"),
-    ]
-    for s_dir in search_dirs:
-        if not os.path.exists(s_dir):
-            continue
-        for filepath in glob.glob(os.path.join(s_dir, "*conferences*.json")):
-            try:
-                with open(filepath, encoding="utf-8") as f:
-                    conf_data = json.load(f)
-                items = conf_data.get("results", [])
-                for item in items:
-                    title = item.get("title", "")
-                    codes = re.findall(r"[A-Za-z0-9\-]{3,15}", title)
-                    for c in codes:
-                        c_clean = c.strip("-").strip()
-                        if not c_clean or len(c_clean) < 3:
-                            continue
-                        if should_exclude(c_clean):
-                            continue
-                        c_lower = c_clean.lower()
-                        c_alnum = re.sub(r"[^a-z0-9]", "", c_lower)
-                        if c_lower in TARGET_TERMS or c_alnum in TARGET_TERMS:
-                            continue
-                        if any(gw in c_lower for gw in GENERIC_WORDS):
-                            continue
-                        has_letter = any(char.isalpha() for char in c_clean)
-                        has_digit = any(char.isdigit() for char in c_clean)
-                        if (
-                            (has_letter and has_digit)
-                            or (len(c_clean) >= 5 and c_lower.endswith("mab"))
-                            or any(
-                                k in c_lower
-                                for k in [
-                                    "zolbet",
-                                    "osem",
-                                    "vyloy",
-                                    "spevat",
-                                    "givas",
-                                    "greson",
-                                    "sones",
-                                    "satric",
-                                    "satri",
-                                    "ribomab",
-                                ]
-                            )
-                        ):
-                            add_synonyms([c_clean])
-            except Exception as e:
-                print(
-                    f"Warning: Failed to process conference file {filepath} for discovery: {e}"
-                )
-
-    config = {}
+    # -----------------------------------------------------------------------
+    # 7. Build config dict — canonical primary key chosen by _name_priority
+    # -----------------------------------------------------------------------
+    config: dict = {}
     for g in groups:
-        sorted_names = sorted(g, key=lambda x: (get_name_priority(x), -len(x), x))
+        sorted_names = sorted(g, key=_name_priority)
         primary = sorted_names[0]
         aliases = sorted_names[1:]
         config[primary] = {"aliases": aliases}
 
     return config
+
+
+# ---------------------------------------------------------------------------
+# Column-aligned Markdown table formatter
+# ---------------------------------------------------------------------------
+
+
+def _strip_md(text: str) -> str:
+    """Remove Markdown formatting tokens from a cell value."""
+    # Expand <br> to " / " (keep single-row layout)
+    text = re.sub(r"<br\s*/?>", " / ", text, flags=re.IGNORECASE)
+    # Remove bold/italic markers
+    text = text.replace("**", "").replace("__", "")
+    text = re.sub(r"(?<!\*)\*(?!\*)", "", text)  # single *
+    text = re.sub(r"(?<!_)_(?!_)", "", text)      # single _
+    # Remove markdown links [text](url) -> text only
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    return text.strip()
+
+
+def md_table_to_text_table(md_text: str) -> str:
+    """Reformat a pipe-delimited Markdown table so every column is space-padded and
+    columns align perfectly when viewed in any plain-text editor.
+
+    The output is still valid Markdown AND human-readable as raw text — exactly like
+    a financial balance sheet table. Each cell is padded with spaces to the widest
+    value in that column. <br> tags are collapsed to \" / \" inline. Markdown bold,
+    italic, and link syntax is stripped from cell text.
+    """
+    raw_lines = [line.rstrip() for line in md_text.splitlines()]
+
+    # Collect prefix (title, blanks, etc.) and table lines separately
+    pre_lines: list[str] = []
+    table_lines: list[str] = []
+    post_lines: list[str] = []
+    in_table = False
+    table_done = False
+
+    for line in raw_lines:
+        stripped = line.lstrip()
+        if not table_done and stripped.startswith("|"):
+            in_table = True
+            table_lines.append(line)
+        elif in_table and not table_done:
+            table_done = True
+            post_lines.append(line)
+        elif table_done:
+            post_lines.append(line)
+        else:
+            pre_lines.append(line)
+
+    if not table_lines:
+        return md_text  # Nothing to reformat
+
+    # Parse rows into (kind, [cells])
+    # kind: "header" | "divider" | "data"
+    parsed: list[tuple[str, list[str]]] = []
+    header_seen = False
+
+    for line in table_lines:
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if not cols:
+            continue
+        # Divider row: all non-empty cells match :?-+:?
+        if all(re.match(r"^:?-+:?$", c) for c in cols if c):
+            parsed.append(("divider", cols))
+            header_seen = True
+        elif not header_seen:
+            parsed.append(("header", [_strip_md(c) for c in cols]))
+        else:
+            parsed.append(("data", [_strip_md(c) for c in cols]))
+
+    if not parsed:
+        return md_text
+
+    # Normalise column count
+    n_cols = max(len(cells) for _, cells in parsed)
+    parsed = [(kind, cells + [""] * (n_cols - len(cells))) for kind, cells in parsed]
+
+    # Compute per-column widths from header + data rows only
+    col_widths = [1] * n_cols
+    for kind, cells in parsed:
+        if kind == "divider":
+            continue
+        for ci, cell in enumerate(cells):
+            col_widths[ci] = max(col_widths[ci], len(cell))
+
+    # Render aligned rows
+    out_lines: list[str] = []
+    for kind, cells in parsed:
+        if kind == "divider":
+            parts = [" " + "-" * col_widths[ci] + " " for ci in range(n_cols)]
+        else:
+            parts = [f" {cells[ci]:<{col_widths[ci]}} " for ci in range(n_cols)]
+        out_lines.append("|" + "|".join(parts) + "|")
+
+    sections = pre_lines + out_lines + post_lines
+    return "\n".join(sections) + "\n"
+
+
+def md_table_to_csv(md_text: str) -> str:
+    """Convert a pipe-delimited Markdown table to a properly-quoted CSV string.
+
+    Strips Markdown markup (bold, italic, links) and expands <br> to ' / '
+    inline. Uses Python's csv module for RFC-4180 compliant quoting so cells
+    containing commas, quotes, or newlines are handled correctly.
+    Skips the --- divider row. Returns the CSV as a string (UTF-8 safe).
+    """
+    import csv
+    import io
+
+    raw_lines = [line.rstrip() for line in md_text.splitlines()]
+
+    rows: list[list[str]] = []
+    header_seen = False
+
+    for line in raw_lines:
+        if not line.lstrip().startswith("|"):
+            continue
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if not cols:
+            continue
+        # Skip divider rows (--- / :--- / :---:)
+        if all(re.match(r"^:?-+:?$", c) for c in cols if c):
+            header_seen = True
+            continue
+        rows.append([_strip_md(c) for c in cols])
+
+    if not rows:
+        return ""
+
+    # Normalise column count
+    n_cols = max(len(r) for r in rows)
+    rows = [r + [""] * (n_cols - len(r)) for r in rows]
+
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerows(rows)
+    return buf.getvalue()
 
 
 def main():
@@ -1086,6 +677,17 @@ def main():
     )
     parser.add_argument(
         "--output", required=True, help="Path to write the markdown table output"
+    )
+    parser.add_argument(
+        "--target-name",
+        default="",
+        help="Primary target name for LLM-based intervention classification "
+        "(e.g. 'Claudin-18.2')",
+    )
+    parser.add_argument(
+        "--target-synonyms",
+        default="",
+        help="Comma-separated list of target name synonyms for classification context",
     )
 
     args = parser.parse_args()
@@ -1157,7 +759,12 @@ def main():
         print(
             "No config file provided. Dynamically discovering assets from raw registries..."
         )
-        config = discover_config(ct_data, china_data)
+        target_synonyms_list = [
+            s.strip() for s in args.target_synonyms.split(",") if s.strip()
+        ]
+        config = discover_config(
+            ct_data, china_data, args.target_name, target_synonyms_list
+        )
 
     print(f"Total discovered/mapped assets: {len(config)}")
 
@@ -1464,22 +1071,29 @@ def main():
         key=lambda x: (1 if x["is_discontinued"] else 0, -x["lead_val"], x["name"])
     )
 
-    # Write Markdown table
+    # Write Markdown table (with leading # row-number column)
     output_dir = os.path.dirname(args.output)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
     try:
+        md_lines = []
+        md_lines.append(
+            "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
+        )
+        md_lines.append(
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        )
+        for idx, row in enumerate(asset_rows, start=1):
+            # Prepend the row number to the existing row markdown
+            md_lines.append(row["row_markdown"].replace("| ", f"| {idx} | ", 1))
+
+        md_content = "\n".join(md_lines) + "\n"
+        aligned_content = md_table_to_text_table(md_content)
+
         with open(args.output, "w", encoding="utf-8") as out:
-            out.write(
-                "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
-            )
-            out.write(
-                "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-            )
-            for row in asset_rows:
-                out.write(row["row_markdown"] + "\n")
-        print(f"Successfully compiled landscape table at: {args.output}")
+            out.write(aligned_content)
+        print(f"Successfully compiled column-aligned landscape table at: {args.output}")
     except Exception as e:
         print(f"Error writing compiled landscape table: {e}", file=sys.stderr)
         sys.exit(1)

@@ -432,3 +432,146 @@ def test_deepdive_pipeline_integration(mock_deep_run, settings, target_dir):
     assert pdf_out.exists()
     assert (target_dir / "context.md").exists()
     assert (target_dir / "research" / "osemitamab_ct.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for the new LLM-based intervention classifier
+# ---------------------------------------------------------------------------
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_classify_interventions_happy_path(mock_query):
+    """classify_interventions correctly parses a valid LLM JSON response."""
+    import json as _json
+
+    from src.utils.generate_landscape_table import classify_interventions
+
+    mock_query.return_value = _json.dumps(
+        {
+            "asset": ["SHR-A1904", "Zolbetuximab"],
+            "background": ["pembrolizumab", "FOLFOX", "Placebo"],
+        }
+    )
+
+    result = classify_interventions(
+        names=["SHR-A1904", "Zolbetuximab", "pembrolizumab", "FOLFOX", "Placebo"],
+        target_name="Claudin-18.2",
+        target_synonyms=["CLDN18.2", "Claudin 18.2"],
+    )
+
+    assert "SHR-A1904" in result
+    assert "Zolbetuximab" in result
+    assert "pembrolizumab" not in result
+    assert "FOLFOX" not in result
+    assert "Placebo" not in result
+    mock_query.assert_called_once()
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_classify_interventions_llm_failure_raises(mock_query):
+    """classify_interventions raises RuntimeError on LLM failure — no silent fallback."""
+    from src.utils.generate_landscape_table import classify_interventions
+
+    mock_query.return_value = "Error: Gemini API key not configured."
+
+    with pytest.raises(RuntimeError, match="LLM intervention classification failed"):
+        classify_interventions(
+            names=["SHR-A1904", "Zolbetuximab"],
+            target_name="Claudin-18.2",
+        )
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_classify_interventions_invalid_json_raises(mock_query):
+    """classify_interventions raises RuntimeError if LLM returns non-JSON."""
+    from src.utils.generate_landscape_table import classify_interventions
+
+    mock_query.return_value = "Sure, here are the assets: SHR-A1904, Zolbetuximab."
+
+    with pytest.raises(RuntimeError, match="unparseable JSON"):
+        classify_interventions(
+            names=["SHR-A1904", "Zolbetuximab"],
+            target_name="Claudin-18.2",
+        )
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_classify_interventions_deduplicates_input(mock_query):
+    """classify_interventions deduplicates names before calling the LLM."""
+    import json as _json
+
+    from src.utils.generate_landscape_table import classify_interventions
+
+    mock_query.return_value = _json.dumps(
+        {"asset": ["SHR-A1904"], "background": ["Placebo"]}
+    )
+
+    classify_interventions(
+        # 4 names but only 2 unique (case-insensitive)
+        names=["SHR-A1904", "shr-a1904", "Placebo", "placebo"],
+        target_name="Claudin-18.2",
+    )
+
+    # LLM should have been called with only 2 unique entries
+    call_args = mock_query.call_args[0][0]  # prompt positional arg
+    import json as _json2
+
+    # Find the JSON array in the prompt
+    import re as _re
+
+    match = _re.search(r"\[.*?\]", call_args, _re.DOTALL)
+    assert match, "No JSON array found in prompt"
+    sent_names = _json2.loads(match.group())
+    assert len(sent_names) == 2
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_discover_config_uses_classifier(mock_query):
+    """discover_config returns only LLM-classified assets in the config dict."""
+    import json as _json
+
+    from src.utils.generate_landscape_table import discover_config
+
+    mock_query.return_value = _json.dumps(
+        {
+            "asset": ["SHR-A1904"],
+            "background": ["pembrolizumab", "FOLFOX"],
+        }
+    )
+
+    ct_data = {
+        "NCT00000001": {
+            "protocolSection": {
+                "armsInterventionsModule": {
+                    "interventions": [
+                        {"type": "DRUG", "name": "SHR-A1904", "otherNames": []},
+                        {"type": "DRUG", "name": "pembrolizumab", "otherNames": []},
+                        {"type": "DRUG", "name": "FOLFOX", "otherNames": []},
+                    ]
+                }
+            }
+        }
+    }
+
+    config = discover_config(
+        ct_data=ct_data,
+        china_data=[],
+        target_name="Claudin-18.2",
+        target_synonyms=["CLDN18.2"],
+    )
+
+    # Only the classified asset should appear in the config
+    all_names = set(config.keys())
+    for details in config.values():
+        all_names.update(details.get("aliases", []))
+
+    assert any("SHR-A1904" in n or "shr-a1904" in n.lower() for n in all_names)
+    assert not any("pembrolizumab" in n.lower() for n in all_names)
+    assert not any("folfox" in n.lower() for n in all_names)
+
+
+if __name__ == "__main__":
+    import subprocess
+    import sys
+
+    sys.exit(subprocess.run(["pytest", __file__, "-v"], check=False).returncode)

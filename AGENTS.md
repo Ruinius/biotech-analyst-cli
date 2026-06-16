@@ -57,7 +57,7 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
     - `src/utils/summarize_china_direct.py`: NMPA CDE direct search result summarizer.
     - `src/utils/fetch_ip_lens.py`: Lens.org and Dimensions patent/IP search utility.
     - `src/utils/summarize_ip_lens.py`: Lens.org and Dimensions patent/IP result summarizer.
-    - `src/utils/generate_landscape_table.py`: Programmatic competitive landscape table compiler.
+    - `src/utils/generate_landscape_table.py`: Programmatic competitive landscape table compiler. Outputs a pipe-delimited `.md` with space-padded column alignment (columns line up when viewed as plain text, same style as a financial balance sheet). Also outputs a `.csv` with RFC-4180 quoting for Excel/Sheets. Includes a leading `#` row-number column. Markdown markup and `<br>` tags are stripped/collapsed during formatting. In dynamic-discovery mode, calls `classify_interventions()` — a batched LLM-based classifier — to distinguish pipeline assets from background/comparator drugs; accepts `--target-name` and `--target-synonyms` CLI args for classification context.
     - `src/utils/validate_report.py`: Programmatic report audit and quality guardrail validator.
     - `src/utils/convert_md_to_pdf.py`: Paginated Markdown-to-PDF compiler.
     - `src/utils/query_parser.py`: LLM-based query parser with local fallback routines.
@@ -82,6 +82,8 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
    - Playwright requirements for CDE queries require execution of `playwright install chromium` inside the environment.
 4. **Report Validation & Integrity**:
    - Landscape table and final PDF generations are strictly audited using `validate_report.py` to check for hallucinated IDs or data omissions.
+5. **Asset Discovery (LLM-based)**:
+   - Dynamic asset discovery in `generate_landscape_table.py` uses `classify_interventions()`, a batched LLM classifier, to separate pipeline assets from background drugs. No hardcoded blocklists exist. Classification is transparent (every decision is printed) and fails loudly on LLM error — no silent fallback.
 5. **Linting & Secret Protection**:
    - Automated code formatting and lint checks are executed via `ruff`.
    - Secret scanning checks are executed via `detect-secrets` against `.secrets.baseline`.

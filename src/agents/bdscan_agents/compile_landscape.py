@@ -4,11 +4,14 @@ import sys
 from pathlib import Path
 
 from src.utils import formatting
+from src.utils.generate_landscape_table import md_table_to_csv, md_table_to_text_table
 
 
 def compile_landscape_table(
     folder_safe_name: str,
     target_dir: Path,
+    target_name: str = "",
+    target_synonyms: list | None = None,
 ) -> Path:
     """Compile raw sources into the initial master landscape table under research/."""
     formatting.print_info("Compiling master landscape table...")
@@ -34,6 +37,10 @@ def compile_landscape_table(
         "--output",
         temp_table_out,
     ]
+    if target_name:
+        cmd_args += ["--target-name", target_name]
+    if target_synonyms:
+        cmd_args += ["--target-synonyms", ",".join(target_synonyms)]
 
     formatting.print_info("Running legacy landscape table generation script...")
     res = subprocess.run(cmd_args, env=my_env, capture_output=True, text=True)
@@ -41,16 +48,22 @@ def compile_landscape_table(
         formatting.print_error(
             f"Landscape table generation failed: {res.stderr or res.stdout}"
         )
-        # Write dummy empty table so pipeline doesn't crash entirely
-        headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
-        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-        master_table_out.write_text(f"{headers}\n{divider}\n", encoding="utf-8")
+        # Write dummy empty table (with # column) so pipeline doesn't crash entirely
+        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
+        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        dummy_md = f"{headers}\n{divider}\n"
+        master_table_out.write_text(md_table_to_text_table(dummy_md), encoding="utf-8")
+        csv_out = master_table_out.with_suffix(".csv")
+        csv_out.write_text(md_table_to_csv(dummy_md), encoding="utf-8-sig")
         return master_table_out
 
     # Read the generated table and append Web-research columns
     with open(temp_table_out, encoding="utf-8") as f:
         lines = f.readlines()
 
+    # The generated .md already has the # column from generate_landscape_table.py.
+    # We just need to append the 4 Web columns.
+    # idx 0 = header, idx 1 = divider, idx >= 2 = data rows
     modified_lines = []
     for idx, line in enumerate(lines):
         line = line.strip()
@@ -64,8 +77,7 @@ def compile_landscape_table(
             continue
 
         if idx == 0:
-            # Header line
-            # Append 4 new columns: Web Selectivity & Safety, Web Efficacy, Web Milestones, Web Citations
+            # Header line: append 4 new Web columns
             new_cols = cols[1:-1] + [
                 "Web Selectivity & Safety Profile",
                 "Web Key Efficacy Data",
@@ -74,11 +86,11 @@ def compile_landscape_table(
             ]
             modified_lines.append("| " + " | ".join(new_cols) + " |")
         elif idx == 1:
-            # Divider line
+            # Divider line: append 4 new dividers
             new_divs = cols[1:-1] + [":---", ":---", ":---", ":---"]
             modified_lines.append("| " + " | ".join(new_divs) + " |")
         else:
-            # Data row
+            # Data row: append 4 Web placeholder cells
             new_data = cols[1:-1] + [
                 "Web research pending.",
                 "Web research pending.",
@@ -87,11 +99,18 @@ def compile_landscape_table(
             ]
             modified_lines.append("| " + " | ".join(new_data) + " |")
 
-    # Save to research/landscape_table.md
-    master_table_out.write_text("\n".join(modified_lines) + "\n", encoding="utf-8")
+    # Save to research/landscape_table.md with column-aligned formatting
+    final_md = "\n".join(modified_lines) + "\n"
+    aligned_md = md_table_to_text_table(final_md)
+    master_table_out.write_text(aligned_md, encoding="utf-8")
     formatting.print_success(
-        f"Successfully compiled master landscape table with Web columns at {master_table_out}"
+        f"Successfully compiled column-aligned landscape table at {master_table_out}"
     )
+
+    # Write CSV version alongside the .md
+    csv_out = master_table_out.with_suffix(".csv")
+    csv_out.write_text(md_table_to_csv(final_md), encoding="utf-8-sig")
+    formatting.print_success(f"Saved CSV table at {csv_out}")
 
     return master_table_out
 

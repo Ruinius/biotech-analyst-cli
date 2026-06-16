@@ -70,3 +70,39 @@ Next steps:
 
 - config needs option to switch LLM provider and models
 - double check the default config for folder name
+- [x] format the landscape and the final output table so that it shows as a table when opened with text (Unicode box-drawing `.txt` + `#` row-number column)
+- build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working
+- in the context_agent, kill the fallback. The run should just stop with an error. NO FALLBACKS.
+- investigate the web-seach error in learning.md. It looks like there's a recurring issue with "valid API key" are there places where the llm_client is trying to call Gemini when it's been set tp deepseek? API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
+- double check how does db_search_agent actually work. Does it create a table of data that is merged? I see jsons, but I see only clinicaltrials.gov and CDE are merged. What about the others?
+- what is "update_learnings" in asset_reserach_agent? Only the curator_agent can update learnings.
+- error when searching in Chinese:
+  Traceback (most recent call last):
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1082, in \_bootstrap_inner
+  self.\_context.run(self.run)
+  ```^^^^^^^^^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1024, in run
+  self.\_target(*self.\_args, \*\*self.\_kwargs)
+  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1082, in \_bootstrap_inner
+  self.\_context.run(self.run)
+  ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\subprocess.py", line 1613, in \_readerthread
+  buffer.append(fh.read())
+  ~~~~~~~^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\encodings\cp1252.py", line 23, in decode
+  return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 45: character maps to <undefined>
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\threading.py", line 1024, in run
+  self.\_target(*self.\_args, \*\*self.\_kwargs)
+  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\subprocess.py", line 1613, in \_readerthread
+  buffer.append(fh.read())
+  ~~~~~~~^^
+  File "C:\Users\tiger\AppData\Roaming\uv\python\cpython-3.14.2-windows-x86_64-none\Lib\encodings\cp1252.py", line 23, in decode
+  return codecs.charmap_decode(input,self.errors,decoding_table)[0]
+  ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 44: character maps to <undefined>
+  ℹ INFO: Turn 4/4 for Chinese WHO Registries...
+  ```

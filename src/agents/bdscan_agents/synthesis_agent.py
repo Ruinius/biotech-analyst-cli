@@ -7,6 +7,7 @@ from ddgs import DDGS
 from src.core.config import Settings
 from src.services.llm_client import LLMClient
 from src.utils import formatting
+from src.utils.generate_landscape_table import md_table_to_csv, md_table_to_text_table
 
 
 def web_search(query: str) -> str:
@@ -165,14 +166,20 @@ class SynthesisAgent:
         report_file.write_text(report_header + report_text, encoding="utf-8")
         formatting.print_success(f"Saved strategic report to {report_file}")
 
-        # Write table markdown separately
+        # Write table markdown separately, with column-aligned formatting
         table_header = (
             f"# Reconciled Competitive Matrix: {target_name}\n\n"
             f"**Date of Table**: {datetime.date.today().strftime('%B %d, %Y')}\n"
             f"**Target Pathway**: {target_name}\n\n"
             "---\n\n"
         )
-        table_file.write_text(table_header + table_content, encoding="utf-8")
-        formatting.print_success(f"Saved competitive matrix table to {table_file}")
+        table_md = table_header + table_content
+        table_file.write_text(md_table_to_text_table(table_md), encoding="utf-8")
+        formatting.print_success(f"Saved column-aligned competitive matrix table to {table_file}")
+
+        # Write CSV version alongside the .md
+        csv_file = table_file.with_suffix(".csv")
+        csv_file.write_text(md_table_to_csv(table_md), encoding="utf-8-sig")
+        formatting.print_success(f"Saved CSV competitive matrix at {csv_file}")
 
         return report_file, table_file

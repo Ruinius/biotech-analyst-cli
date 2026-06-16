@@ -78,7 +78,7 @@ def run_bdscan_pipeline(
         curator.curate_database_search(target_dir)
 
         # Step 3: Landscape Table Compiler
-        compile_landscape_table(folder_safe_name, target_dir)
+        compile_landscape_table(folder_safe_name, target_dir, target_name, en_terms)
 
     # Re-run or compilation phase
     table_path = target_dir / "research" / "landscape_table.md"
@@ -86,7 +86,7 @@ def run_bdscan_pipeline(
         formatting.print_warning(
             "Landscape table not found. Compiling from existing source JSONs..."
         )
-        compile_landscape_table(folder_safe_name, target_dir)
+        compile_landscape_table(folder_safe_name, target_dir, target_name, en_terms)
 
     # Step 4: Asset Research Agent (4-turn web search loop per asset)
     asset_agent = AssetResearchAgent(settings, target_dir)
