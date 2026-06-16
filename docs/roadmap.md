@@ -86,6 +86,9 @@ Next steps:
   - Split cell cleaners, formatting helpers, and phase calculators (e.g., `clean_sponsor`, `parse_ct_phase`, `detect_formulation`) into a dedicated `src/utils/landscape/formatters.py` submodule.
   - Split table exporters and Unicode box-drawing/CSV conversion functions (`md_table_to_text_table`, `md_table_to_csv`) into `src/utils/landscape/exporters.py`.
   - Split the main landscape compilation loops and registry processing logic into `src/utils/landscape/compiler.py`, leaving `generate_landscape_table.py` as a lightweight, clean helper script/module that orchestrates formatting and compilation by importing these submodules.
+- [ ] Segregate AI Agent tools and general utility scripts into separate folders:
+  - Move all database query utilities, fetchers, and summarizers (e.g., ClinicalTrials, PubChem, openFDA, China CDE) into a dedicated `src/tools/` or `src/agents/tools/` folder to serve as the agent registry.
+  - Keep `src/utils/` focused exclusively on non-agent scripts (e.g., PDF compilation, CLI formatting, ASCII art rendering, test suites).
 - the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
 - build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working
 - investigate the web-seach error in learning.md. It looks like there's a recurring issue with "valid API key" are there places where the llm_client is trying to call Gemini when it's been set tp deepseek? API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
