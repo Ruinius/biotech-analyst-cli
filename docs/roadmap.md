@@ -36,7 +36,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 3: Curator Agent & Curation Loop
-- [ ] **Curator Agent (`curator_agent.py`):**
+- [x] **Curator Agent (`curator_agent.py`):**
   - Implement stage-end logic to ingest execution logs from `db_search_agent` and `asset_research_agent`.
   - Update sections `## database-search` and `## web-search` inside the global [learning.md](file:///f:/AIML%20projects/biotech-analyst-cli/src/agents/learning.md) file (limiting each section to 20 lines max).
 

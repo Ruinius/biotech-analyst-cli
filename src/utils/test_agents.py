@@ -19,6 +19,7 @@ from src.agents.bdscan_agents.asset_research_agent import (
     extract_names_from_cell,
 )
 from src.agents.bdscan_agents.context_agent import generate_context
+from src.agents.bdscan_agents.curator_agent import CuratorAgent
 from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
 from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
@@ -162,3 +163,51 @@ def test_synthesis_agent(mock_query, settings, target_dir):
         encoding="utf-8"
     )
     assert "TestDrug" in table_file.read_text(encoding="utf-8")
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_curator_agent(mock_query, settings, target_dir):
+    # Setup log files
+    db_log = target_dir / "research" / "research_log_01_clinicaltrials.md"
+    db_log.write_text("Mock database search log content.", encoding="utf-8")
+
+    web_log = target_dir / "research" / "web_research_log_testdrug.md"
+    web_log.write_text("Mock web search log content.", encoding="utf-8")
+
+    agent = CuratorAgent(settings)
+    # Redirect learning filepath to temporary test directory
+    test_learning_path = target_dir / "learning.md"
+    agent.learning_filepath = test_learning_path
+
+    # Define a mock response that returns more than 20 bullets to test programmatic limit
+    mock_query.return_value = "\n".join([f"- Learning item {i}" for i in range(1, 26)])
+
+    # Curate database search
+    agent.curate_database_search(target_dir)
+
+    # Verify content and limits
+    assert test_learning_path.exists()
+    content = test_learning_path.read_text(encoding="utf-8")
+    assert "## database-search" in content
+
+    # Extract the database-search section lines
+    lines = content.splitlines()
+    db_start = lines.index("## database-search")
+    db_end = lines.index("## web-search") if "## web-search" in lines else len(lines)
+    db_section_lines = [l for l in lines[db_start + 1 : db_end] if l.strip().startswith("-")]
+
+    # Assert programmatic limit of 20 was enforced
+    assert len(db_section_lines) == 20
+    assert "- Learning item 1" in db_section_lines
+    assert "- Learning item 20" in db_section_lines
+    assert "- Learning item 21" not in db_section_lines
+
+    # Curate web search
+    mock_query.return_value = "- Web lesson A\n- Web lesson B"
+    agent.curate_web_search(target_dir)
+
+    content_updated = test_learning_path.read_text(encoding="utf-8")
+    assert "## web-search" in content_updated
+    assert "- Web lesson A" in content_updated
+    assert "- Web lesson B" in content_updated
+

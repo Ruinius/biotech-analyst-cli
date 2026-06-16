@@ -34,6 +34,7 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
       - `db_search_agent.py`: Sequential multi-source query agent.
       - `compile_landscape.py`: Deterministic database consolidation table compiler.
       - `asset_research_agent.py`: Row diligence web search and de-duplication loop.
+      - `curator_agent.py`: Stage-end curation agent updating global learnings.
       - `synthesis_agent.py`: Strategic meta-analysis synthesis agent.
     - `src/agents/deepdive_agents/`: Directory housing asset Deep-Dive agent implementations.
   - `src/services/`: External API services.

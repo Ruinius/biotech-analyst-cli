@@ -300,12 +300,32 @@ class AssetResearchAgent:
                         table_path, asset_name, safety, efficacy, milestones, citations
                     )
                     history.append("System Tool Result: Table updated successfully.")
-                    update_learnings(
-                        "web-search",
-                        f"Successfully researched and updated {asset_name} ({sponsor}).",
-                    )
                 else:
                     history.append(f"System Tool Result: Unknown tool '{called_tool}'.")
             else:
                 if "[FINALIZE]" in response or turn == turn_budget:
                     break
+
+        # Save execution log to a markdown file
+        clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", asset_name)
+        log_file = (
+            self.target_dir
+            / "research"
+            / f"web_research_log_{clean_name.lower()}.md"
+        )
+
+        log_content = [
+            f"# Web Research Log: {asset_name}",
+            f"**Developer**: {sponsor}",
+            f"**Modality**: {modality}",
+            f"**Phase**: {phase}",
+            f"**Trial IDs**: {trials}",
+            "",
+            "## Execution History",
+            "",
+        ]
+        for hist_item in history:
+            log_content.append(hist_item)
+            log_content.append("\n---\n")
+
+        log_file.write_text("\n".join(log_content), encoding="utf-8")
