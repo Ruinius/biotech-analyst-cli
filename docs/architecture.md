@@ -74,7 +74,6 @@ biotech-analyst-cli/
 │   │   ├── generate_landscape_table.py # Script building competitive matrix
 │   │   ├── validate_report.py      # Validator checking IDs against raw logs
 │   │   └── convert_md_to_pdf.py    # Paginated PDF compiler
-│   └── main.py                     # Entry point routing to src/cli/main.py
 ├── pyproject.toml                  # Python package configuration (uv managed)
 ├── uv.lock                         # Lockfile for python packages
 └── AGENTS.md                       # Project index and architectural constraints

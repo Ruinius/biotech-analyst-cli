@@ -18,7 +18,6 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
   - `docs/cli_spec.md`: CLI interface inputs, parameters, and command behaviors.
   - `docs/bdscan_spec.md`: Agentic architecture design for broad scans.
   - `docs/roadmap.md`: Milestones and steps for pipeline refactoring.
-- `main.py`: Entrypoint routing execution to `src/cli/main.py`.
 - `src/`: Core source package.
   - `src/cli/`: Command-line interface submodules.
     - `src/cli/main.py`: CLI command router and application main loop.
