@@ -38,7 +38,7 @@ def search_clinicaltrials(folder_safe_name: str, term: str, limit: int = 50) -> 
 
     success, out, err = run_cmd(
         [
-            "src/utils/fetch_clinicaltrials.py",
+            "src/tools/fetch_clinicaltrials.py",
             "--terms",
             term,
             "--output",
@@ -53,7 +53,7 @@ def search_clinicaltrials(folder_safe_name: str, term: str, limit: int = 50) -> 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
-            "src/utils/summarize_clinicaltrials.py",
+            "src/tools/summarize_clinicaltrials.py",
             "--input",
             out_file,
             "--output",
@@ -78,7 +78,7 @@ def search_anzctr_ctis(folder_safe_name: str, term: str, limit: int = 50) -> str
 
     success, out, err = run_cmd(
         [
-            "src/utils/fetch_anzctr_ctis.py",
+            "src/tools/fetch_anzctr_ctis.py",
             "--term",
             term,
             "--output",
@@ -93,7 +93,7 @@ def search_anzctr_ctis(folder_safe_name: str, term: str, limit: int = 50) -> str
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
-            "src/utils/summarize_anzctr_ctis.py",
+            "src/tools/summarize_anzctr_ctis.py",
             "--input",
             out_file,
             "--output",
@@ -116,7 +116,7 @@ def search_conferences(folder_safe_name: str, term: str, limit: int = 50) -> str
 
     success, out, err = run_cmd(
         [
-            "src/utils/fetch_conferences.py",
+            "src/tools/fetch_conferences.py",
             "--term",
             term,
             "--output",
@@ -131,7 +131,7 @@ def search_conferences(folder_safe_name: str, term: str, limit: int = 50) -> str
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
-            "src/utils/summarize_conferences.py",
+            "src/tools/summarize_conferences.py",
             "--input",
             out_file,
             "--output",
@@ -156,7 +156,7 @@ def search_chinese_registries(folder_safe_name: str, term: str, limit: int = 50)
 
     success, out, err = run_cmd(
         [
-            "src/utils/fetch_chinese_registries.py",
+            "src/tools/fetch_chinese_registries.py",
             "--term",
             term,
             "--output",
@@ -171,7 +171,7 @@ def search_chinese_registries(folder_safe_name: str, term: str, limit: int = 50)
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
-            "src/utils/summarize_chinese_registries.py",
+            "src/tools/summarize_chinese_registries.py",
             "--input",
             out_file,
             "--output",
@@ -196,7 +196,7 @@ def search_china_direct(folder_safe_name: str, term: str) -> str:
 
     # Direct search on NMPA CDE (requires chromium playwrigth installed)
     success, out, err = run_cmd(
-        ["src/utils/fetch_china_direct.py", "--term", term, "--output", out_file]
+        ["src/tools/fetch_china_direct.py", "--term", term, "--output", out_file]
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing CDE Playwright scrape for '{term}': {err or out}"
@@ -204,7 +204,7 @@ def search_china_direct(folder_safe_name: str, term: str) -> str:
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
-            "src/utils/summarize_china_direct.py",
+            "src/tools/summarize_china_direct.py",
             "--input",
             out_file,
             "--output",
@@ -227,7 +227,7 @@ def search_ip_lens(folder_safe_name: str, term: str, limit: int = 50) -> str:
 
     success, out, err = run_cmd(
         [
-            "src/utils/fetch_ip_lens.py",
+            "src/tools/fetch_ip_lens.py",
             "--term",
             term,
             "--output",
@@ -241,7 +241,7 @@ def search_ip_lens(folder_safe_name: str, term: str, limit: int = 50) -> str:
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
-        ["src/utils/summarize_ip_lens.py", "--input", out_file, "--output", sum_file]
+        ["src/tools/summarize_ip_lens.py", "--input", out_file, "--output", sum_file]
     )
     if not success_sum or not os.path.exists(sum_file):
         return f"Error summarizing Lens.org IP for '{term}': {err_sum or out_sum}"
@@ -258,14 +258,14 @@ def search_pubchem(folder_safe_name: str, term: str) -> str:
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
-        ["src/utils/fetch_pubchem.py", "--compound", term, "--output", out_file]
+        ["src/tools/fetch_pubchem.py", "--compound", term, "--output", out_file]
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing PubChem fetch for '{term}': {err or out}"
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
-        ["src/utils/summarize_pubchem.py", "--input", out_file, "--output", sum_file]
+        ["src/tools/summarize_pubchem.py", "--input", out_file, "--output", sum_file]
     )
     if not success_sum or not os.path.exists(sum_file):
         return f"Error summarizing PubChem for '{term}': {err_sum or out_sum}"
@@ -282,14 +282,14 @@ def search_openfda(folder_safe_name: str, term: str) -> str:
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
-        ["src/utils/fetch_openfda.py", "--drug", term, "--output", out_file]
+        ["src/tools/fetch_openfda.py", "--drug", term, "--output", out_file]
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing openFDA fetch for '{term}': {err or out}"
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
-        ["src/utils/summarize_openfda.py", "--input", out_file, "--output", sum_file]
+        ["src/tools/summarize_openfda.py", "--input", out_file, "--output", sum_file]
     )
     if not success_sum or not os.path.exists(sum_file):
         return f"Error summarizing openFDA for '{term}': {err_sum or out_sum}"

@@ -14,6 +14,11 @@ This file indexes the workspace structure and defines architectural rules/constr
   - `cli_spec.md`: CLI interface parameters and command behaviors.
   - `bdscan_spec.md`: Multi-agent pipeline design for broad scans.
   - `roadmap.md`: Refactoring milestones and steps.
+- `tests/`: Project unit, integration, and command-line test suite.
+  - `test_agents.py`: Pipeline and agent integration tests.
+  - `test_config.py`: LLM client queue, config manager, and retry tests.
+  - `test_query_parser.py`: Regex and LLM-based query parsing tests.
+  - `run_tests.py`: Subprocess command-line integration tests for fetchers/summarizers.
 - `src/`: Source code package.
   - `cli/main.py`: Command router and main execution loop.
   - `core/`: Config settings and pipeline orchestrators.
@@ -25,8 +30,9 @@ This file indexes the workspace structure and defines architectural rules/constr
     - `bdscan_agents/`: Broad scan agents (`context_agent.py`, `db_search_agent.py`, `compile_landscape.py`, `asset_research_agent.py`, `curator_agent.py`, `synthesis_agent.py`).
     - `deepdive_agents/`: Deep-dive diligence agents.
   - `services/llm_client.py`: Thread-safe FIFO queue LLM interface (Gemini, OpenRouter, DeepSeek).
-  - `utils/`: Data fetching, parsing, and reporting utilities.
+  - `tools/`: Programmatic database fetchers and summarizers (agent tools registry).
     - `fetch_*.py` & `summarize_*.py`: API/scraping queries for sources (ClinicalTrials, PubChem, openFDA, ANZCTR/CTIS, conferences, Chinese registries, NMPA CDE direct, Lens.org).
+  - `utils/`: Data parsing, reporting, and CLI utilities.
     - `generate_landscape_table.py`: Competitive landscape table compiler (Markdown/CSV). Uses LLM-based `classify_interventions()`.
     - `validate_report.py`: Integrity and quality gate checks for compiled reports.
     - `convert_md_to_pdf.py`: Paginated PDF compiler.
@@ -55,7 +61,7 @@ This file indexes the workspace structure and defines architectural rules/constr
    - Ensure landscape tables and PDF reports are audited using `validate_report.py` to prevent hallucinated IDs or data omissions.
    - Maintain parameter backward-compatibility with `asset-pipeline-research` across scripts in `src/utils/`.
 6. **Testing Standards**:
-   - Strictly test-driven. Write unit/integration tests (`src/utils/test_*.py`) for all additions and changes.
+   - Strictly test-driven. Write unit/integration tests (`tests/test_*.py`) for all additions and changes.
    - Do NOT make real network or LLM API calls in tests. Mock all external dependencies.
 7. **Secrets & Linting**:
    - Run code formatting and lint checks using `ruff`.

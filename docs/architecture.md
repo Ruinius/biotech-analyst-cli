@@ -60,9 +60,7 @@ biotech-analyst-cli/
 │   │   │   ├── synthesis_agent.py  # 10-turn executive report synthesizer
 │   │   │   └── curator_agent.py    # Stage-end compiler of global learnings
 │   │   └── deepdive_agents/        # Deep-dive agent directory
-│   └── utils/                      # Programmatic fetchers and parsers
-│   │   ├── formatting.py           # Dr. Hops speech bubbles and Rich console
-│   │   ├── parse_pdf.py            # PDF text and table extractor
+│   ├── tools/                      # Programmatic fetchers and summarizers (agent tools registry)
 │   │   ├── fetch_clinicaltrials.py # ClinicalTrials.gov query API
 │   │   ├── fetch_anzctr_ctis.py    # ANZCTR & EU CTIS search API
 │   │   ├── fetch_conferences.py    # ASCO/AACR abstract scraper
@@ -70,10 +68,18 @@ biotech-analyst-cli/
 │   │   ├── fetch_china_direct.py   # Playwright scraper for NMPA CDE
 │   │   ├── fetch_ip_lens.py        # Patent search API client
 │   │   ├── fetch_pubchem.py        # PubChem Compound search client
-│   │   ├── fetch_openfda.py        # FDA safety labeling API client
+│   │   └── fetch_openfda.py        # FDA safety labeling API client
+│   └── utils/                      # Programmatic parsers and report utilities
+│   │   ├── formatting.py           # Dr. Hops speech bubbles and Rich console
+│   │   ├── parse_pdf.py            # PDF text and table extractor
 │   │   ├── generate_landscape_table.py # Script building competitive matrix
 │   │   ├── validate_report.py      # Validator checking IDs against raw logs
 │   │   └── convert_md_to_pdf.py    # Paginated PDF compiler
+├── tests/                          # Project unit, integration, and command-line test suite
+│   ├── test_agents.py              # Multi-agent workflows integration tests
+│   ├── test_config.py              # Configuration and LLM queue manager tests
+│   ├── test_query_parser.py        # Scientific query regex/LLM parser tests
+│   └── run_tests.py                # Command-line subprocess tests for fetchers
 ├── pyproject.toml                  # Python package configuration (uv managed)
 ├── uv.lock                         # Lockfile for python packages
 └── AGENTS.md                       # Project index and architectural constraints

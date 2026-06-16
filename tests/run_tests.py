@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Automated Sourcing Utilities Test Suite
-Runs validation tests on all fetch and summarize utilities in the utils/ directory.
+Runs validation tests on all fetch and summarize utilities in the src/tools/ directory.
 Includes deep content-level assertions for JSON structures and formatted reports.
 Designed for absolute Windows, CP1252, and PowerShell compatibility.
 """
@@ -17,7 +17,7 @@ TEST_SUITE = [
         "name": "ClinicalTrials.gov Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_clinicaltrials.py",
+            "src/tools/fetch_clinicaltrials.py",
             "--terms",
             "Pembrolizumab",
             "--output",
@@ -27,7 +27,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_clinicaltrials.py",
+            "src/tools/summarize_clinicaltrials.py",
             "--input",
             "tmp/test_clinicaltrials_out.json",
             "--output",
@@ -50,7 +50,7 @@ TEST_SUITE = [
         "name": "PubChem BioAssay Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_pubchem.py",
+            "src/tools/fetch_pubchem.py",
             "--compound",
             "Aspirin",
             "--output",
@@ -58,7 +58,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_pubchem.py",
+            "src/tools/summarize_pubchem.py",
             "--input",
             "tmp/test_pubchem_out.json",
             "--output",
@@ -82,7 +82,7 @@ TEST_SUITE = [
         "name": "openFDA Briefings Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_openfda.py",
+            "src/tools/fetch_openfda.py",
             "--drug",
             "Aspirin",
             "--output",
@@ -90,7 +90,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_openfda.py",
+            "src/tools/summarize_openfda.py",
             "--input",
             "tmp/test_openfda_out.json",
             "--output",
@@ -116,7 +116,7 @@ TEST_SUITE = [
         "name": "EU CTIS / ANZCTR Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_anzctr_ctis.py",
+            "src/tools/fetch_anzctr_ctis.py",
             "--term",
             "Pembrolizumab",
             "--output",
@@ -126,7 +126,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_anzctr_ctis.py",
+            "src/tools/summarize_anzctr_ctis.py",
             "--input",
             "tmp/test_anzctr_ctis_out.json",
             "--output",
@@ -149,7 +149,7 @@ TEST_SUITE = [
         "name": "Conference Libraries Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_conferences.py",
+            "src/tools/fetch_conferences.py",
             "--term",
             "Pembrolizumab",
             "--output",
@@ -159,7 +159,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_conferences.py",
+            "src/tools/summarize_conferences.py",
             "--input",
             "tmp/test_conferences_out.json",
             "--output",
@@ -184,7 +184,7 @@ TEST_SUITE = [
         "name": "Chinese Registries Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_chinese_registries.py",
+            "src/tools/fetch_chinese_registries.py",
             "--term",
             "Pembrolizumab",
             "--output",
@@ -194,7 +194,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_chinese_registries.py",
+            "src/tools/summarize_chinese_registries.py",
             "--input",
             "tmp/test_chinese_registries_out.json",
             "--output",
@@ -217,7 +217,7 @@ TEST_SUITE = [
         "name": "Direct NMPA CDE Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_china_direct.py",
+            "src/tools/fetch_china_direct.py",
             "--term",
             "Aspirin",
             "--output",
@@ -225,7 +225,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_china_direct.py",
+            "src/tools/summarize_china_direct.py",
             "--input",
             "tmp/test_china_direct_out.json",
             "--output",
@@ -248,7 +248,7 @@ TEST_SUITE = [
         "name": "Global Patent & IP Utilities",
         "fetch_cmd": [
             sys.executable,
-            "utils/fetch_ip_lens.py",
+            "src/tools/fetch_ip_lens.py",
             "--term",
             "Pembrolizumab",
             "--output",
@@ -256,7 +256,7 @@ TEST_SUITE = [
         ],
         "sum_cmd": [
             sys.executable,
-            "utils/summarize_ip_lens.py",
+            "src/tools/summarize_ip_lens.py",
             "--input",
             "tmp/test_ip_lens_out.json",
             "--output",

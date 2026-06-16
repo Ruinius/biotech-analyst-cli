@@ -81,7 +81,7 @@ def run_deepdive_pipeline(
         if trial_id.strip().upper().startswith("NCT"):
             run_pipeline_step(
                 [
-                    "src/utils/fetch_clinicaltrials.py",
+                    "src/tools/fetch_clinicaltrials.py",
                     "--nct-ids",
                     trial_id,
                     "--output",
@@ -92,7 +92,7 @@ def run_deepdive_pipeline(
         else:
             run_pipeline_step(
                 [
-                    "src/utils/fetch_clinicaltrials.py",
+                    "src/tools/fetch_clinicaltrials.py",
                     "--terms",
                     asset_name,
                     "--output",
@@ -105,7 +105,7 @@ def run_deepdive_pipeline(
         if os.path.exists(ct_file):
             run_pipeline_step(
                 [
-                    "src/utils/summarize_clinicaltrials.py",
+                    "src/tools/summarize_clinicaltrials.py",
                     "--input",
                     ct_file,
                     "--output",
@@ -117,13 +117,13 @@ def run_deepdive_pipeline(
         # 2. openFDA Labels
         fda_file = f"tmp/{folder_safe_name}_openfda.json"
         run_pipeline_step(
-            ["src/utils/fetch_openfda.py", "--drug", asset_name, "--output", fda_file],
+            ["src/tools/fetch_openfda.py", "--drug", asset_name, "--output", fda_file],
             f"openFDA label check for '{asset_name}'",
         )
         if os.path.exists(fda_file):
             run_pipeline_step(
                 [
-                    "src/utils/summarize_openfda.py",
+                    "src/tools/summarize_openfda.py",
                     "--input",
                     fda_file,
                     "--output",
@@ -136,7 +136,7 @@ def run_deepdive_pipeline(
         pubchem_file = f"tmp/{folder_safe_name}_pubchem.json"
         run_pipeline_step(
             [
-                "src/utils/fetch_pubchem.py",
+                "src/tools/fetch_pubchem.py",
                 "--compound",
                 asset_name,
                 "--output",
@@ -147,7 +147,7 @@ def run_deepdive_pipeline(
         if os.path.exists(pubchem_file):
             run_pipeline_step(
                 [
-                    "src/utils/summarize_pubchem.py",
+                    "src/tools/summarize_pubchem.py",
                     "--input",
                     pubchem_file,
                     "--output",
