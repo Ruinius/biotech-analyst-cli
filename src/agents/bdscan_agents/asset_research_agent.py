@@ -77,50 +77,6 @@ def update_table_row(
 
     table_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
-def update_learnings(section: str, new_learning: str):
-    path = Path("src/agents/learning.md")
-    if not path.exists():
-        return
-    try:
-        content = path.read_text(encoding="utf-8")
-        lines = content.splitlines()
-        section_header = f"## {section}"
-
-        section_idx = -1
-        for idx, line in enumerate(lines):
-            if line.strip() == section_header:
-                section_idx = idx
-                break
-
-        if section_idx == -1:
-            return
-
-        # Find next section or end of file
-        next_section_idx = len(lines)
-        for idx in range(section_idx + 1, len(lines)):
-            if lines[idx].startswith("## "):
-                next_section_idx = idx
-                break
-
-        # Get current section lines
-        sec_lines = lines[section_idx + 1 : next_section_idx]
-        sec_lines = [l for l in sec_lines if l.strip() and "Initializing" not in l]
-
-        # Avoid adding exact duplicate learning lines
-        new_line = f"- {new_learning.strip()}"
-        if new_line not in sec_lines:
-            sec_lines.append(new_line)
-
-        # Limit to 20 lines max
-        sec_lines = sec_lines[-20:]
-
-        new_content = lines[: section_idx + 1] + sec_lines + lines[next_section_idx:]
-        path.write_text("\n".join(new_content) + "\n", encoding="utf-8")
-    except Exception as e:
-        print(f"Warning: Failed to update learnings: {e}")
-
-
 def web_search(query: str) -> str:
     """Query DuckDuckGo for clinical news and pipeline updates."""
     try:

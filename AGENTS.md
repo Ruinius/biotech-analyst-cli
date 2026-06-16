@@ -1,99 +1,62 @@
 # Agent Documentation and Project Index (AGENTS.md)
 
-Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the workspace structure, documents rules, and outlines core architectural constraints.
+This file indexes the workspace structure and defines architectural rules/constraints for AI coding agents.
 
 ---
 
 ## Project Structure
 
-- `pyproject.toml`: Project metadata, dependencies, and script routing.
-- `uv.lock`: Lockfile for python packages.
-- `.gitignore`: Git ignored files.
-- `README.md`: Basic usage, installation, and commands documentation.
-- `AGENTS.md`: Architectural index, guidelines, and rules (this file).
-- `.pre-commit-config.yaml`: Configuration file for git pre-commit/pre-push hooks.
-- `.secrets.baseline`: Yelps detect-secrets baseline file representing approved false positives.
-- `docs/`: Technical specifications and architectural guides.
-  - `docs/architecture.md`: System design and directory layout.
-  - `docs/cli_spec.md`: CLI interface inputs, parameters, and command behaviors.
-  - `docs/bdscan_spec.md`: Agentic architecture design for broad scans.
-  - `docs/roadmap.md`: Milestones and steps for pipeline refactoring.
-- `src/`: Core source package.
-  - `src/cli/`: Command-line interface submodules.
-    - `src/cli/main.py`: CLI command router and application main loop.
-  - `src/core/`: Configuration and settings.
-    - `src/core/config.py`: Settings Pydantic module mapping to `.env` in the current folder.
-    - `src/core/exceptions.py`: Custom execution exceptions.
-    - `src/core/bdscan_orchestrator.py`: Orchestrator for the BD Scan multi-agent pipeline.
-    - `src/core/deepdive_orchestrator.py`: Orchestrator for the Deep Dive multi-asset diligence pipeline.
-  - `src/agents/`: Multi-agent workflows.
-    - `src/agents/learning.md`: Global pipeline learnings and lessons.
-    - `src/agents/bdscan_agents/`: Directory housing pathway Broad Scan agent implementations.
-      - `context_agent.py`: Scientific grounding overview generator.
-      - `db_search_agent.py`: Sequential multi-source query agent.
-      - `compile_landscape.py`: Deterministic database consolidation table compiler.
-      - `asset_research_agent.py`: Row diligence web search and de-duplication loop.
-      - `curator_agent.py`: Stage-end curation agent updating global learnings.
-      - `synthesis_agent.py`: Strategic meta-analysis synthesis agent.
-    - `src/agents/deepdive_agents/`: Directory housing asset Deep-Dive agent implementations.
-  - `src/services/`: External API services.
-    - `src/services/llm_client.py`: Unified interface to Gemini, OpenRouter, and DeepSeek.
-  - `src/utils/`: Sourcing utility modules and formatting helpers.
-    - `src/utils/formatting.py`: White Rabbit ASCII art renderer and biotech-nerdy speech bubble helper.
-    - `src/utils/parse_pdf.py`: Extracting text and tables from publications.
-    - `src/utils/fetch_clinicaltrials.py`: clinicaltrials.gov API fetcher.
-    - `src/utils/summarize_clinicaltrials.py`: clinicaltrials.gov summarizer.
-    - `src/utils/fetch_pubchem.py`: PubChem BioAssay search utility.
-    - `src/utils/summarize_pubchem.py`: PubChem BioAssay active assays selectivity summarizer.
-    - `src/utils/fetch_openfda.py`: openFDA drug label and safety query utility.
-    - `src/utils/summarize_openfda.py`: openFDA drug label safety summarizer.
-    - `src/utils/fetch_anzctr_ctis.py`: EU CTIS and ANZCTR trial query utility.
-    - `src/utils/summarize_anzctr_ctis.py`: EU CTIS and ANZCTR trial summarizer.
-    - `src/utils/fetch_conferences.py`: Conference abstracts search utility (ASCO, AACR, etc.).
-    - `src/utils/summarize_conferences.py`: Conference abstracts summarizer.
-    - `src/utils/fetch_chinese_registries.py`: Chinese registries & WHO ICTRP search utility.
-    - `src/utils/summarize_chinese_registries.py`: Chinese registries & WHO ICTRP trial summarizer.
-    - `src/utils/fetch_china_direct.py`: Playwright-based NMPA CDE direct search utility (WAF bypass).
-    - `src/utils/summarize_china_direct.py`: NMPA CDE direct search result summarizer.
-    - `src/utils/fetch_ip_lens.py`: Lens.org and Dimensions patent/IP search utility.
-    - `src/utils/summarize_ip_lens.py`: Lens.org and Dimensions patent/IP result summarizer.
-    - `src/utils/generate_landscape_table.py`: Programmatic competitive landscape table compiler. Outputs a pipe-delimited `.md` with space-padded column alignment (columns line up when viewed as plain text, same style as a financial balance sheet). Also outputs a `.csv` with RFC-4180 quoting for Excel/Sheets. Includes a leading `#` row-number column. Markdown markup and `<br>` tags are stripped/collapsed during formatting. In dynamic-discovery mode, calls `classify_interventions()` — a batched LLM-based classifier — to distinguish pipeline assets from background/comparator drugs; accepts `--target-name` and `--target-synonyms` CLI args for classification context.
-    - `src/utils/validate_report.py`: Programmatic report audit and quality guardrail validator.
-    - `src/utils/convert_md_to_pdf.py`: Paginated Markdown-to-PDF compiler.
-    - `src/utils/query_parser.py`: LLM-based query parser with local fallback routines.
-    - `src/utils/run_tests.py`: Automated testing suite for fetchers/summarizers.
-    - `src/utils/test_agents.py`: Unit and integration test suite for multi-agent loops.
-    - `src/utils/test_config.py`: Unit test suite for configuration and model preferences.
-    - `src/utils/test_query_parser.py`: Unit tests for the query parsing and fallback utility.
+- `pyproject.toml` & `uv.lock`: Project metadata and locked dependencies.
+- `README.md`: Basic usage, installation, and commands.
+- `AGENTS.md`: Architectural rules, guidelines, and project index (this file).
+- `docs/`: Technical specifications.
+  - `architecture.md`: System design and directory layout.
+  - `cli_spec.md`: CLI interface parameters and command behaviors.
+  - `bdscan_spec.md`: Multi-agent pipeline design for broad scans.
+  - `roadmap.md`: Refactoring milestones and steps.
+- `src/`: Source code package.
+  - `cli/main.py`: Command router and main execution loop.
+  - `core/`: Config settings and pipeline orchestrators.
+    - `config.py`: Settings mapping to `.env` in the root folder.
+    - `exceptions.py`: Custom execution exceptions.
+    - `bdscan_orchestrator.py` & `deepdive_orchestrator.py`: Multi-agent pipeline orchestrators.
+  - `agents/`: AI agents folder (one agent per file).
+    - `learning.md`: Shared lessons and guidelines.
+    - `bdscan_agents/`: Broad scan agents (`context_agent.py`, `db_search_agent.py`, `compile_landscape.py`, `asset_research_agent.py`, `curator_agent.py`, `synthesis_agent.py`).
+    - `deepdive_agents/`: Deep-dive diligence agents.
+  - `services/llm_client.py`: Thread-safe FIFO queue LLM interface (Gemini, OpenRouter, DeepSeek).
+  - `utils/`: Data fetching, parsing, and reporting utilities.
+    - `fetch_*.py` & `summarize_*.py`: API/scraping queries for sources (ClinicalTrials, PubChem, openFDA, ANZCTR/CTIS, conferences, Chinese registries, NMPA CDE direct, Lens.org).
+    - `generate_landscape_table.py`: Competitive landscape table compiler (Markdown/CSV). Uses LLM-based `classify_interventions()`.
+    - `validate_report.py`: Integrity and quality gate checks for compiled reports.
+    - `convert_md_to_pdf.py`: Paginated PDF compiler.
+    - `query_parser.py`: Query processing with local fallbacks.
 
 ---
 
-## Architectural Guidelines
+## Architectural Rules for Agents
 
-1. **Environment**:
-   - Operating System: Windows
-   - Terminal: PowerShell (`pwsh`)
-   - Tooling: Managed entirely with `uv`. All python execution must use `uv run`.
-2. **ASCII Art Interface**:
-   - The CLI utilizes ASCII art depicting a white rabbit with glasses ("Dr. Hops").
-   - Interactions use speech bubbles containing nerdy biotech-themed remarks.
-3. **Registry & Scraper Boundaries**:
-   - Scripts in `src/utils` must maintain backward-compatibility with parameters used in `asset-pipeline-research`.
-   - Playwright requirements for CDE queries require execution of `playwright install chromium` inside the environment.
-4. **Report Validation & Integrity**:
-   - Landscape table and final PDF generations are strictly audited using `validate_report.py` to check for hallucinated IDs or data omissions.
-5. **Asset Discovery (LLM-based)**:
-   - Dynamic asset discovery in `generate_landscape_table.py` uses `classify_interventions()`, a batched LLM classifier, to separate pipeline assets from background drugs. No hardcoded blocklists exist. Classification is transparent (every decision is printed) and fails loudly on LLM error — no silent fallback.
-5. **Linting & Secret Protection**:
-   - Automated code formatting and lint checks are executed via `ruff`.
-   - Secret scanning checks are executed via `detect-secrets` against `.secrets.baseline`.
-   - Git push triggers these checks automatically if hooks are installed. Run `uv run pre-commit install --hook-type pre-push` to set them up locally.
-6. **Test-Driven Focus**:
-   - The project is strictly test-focused. New unit/integration tests must be added for all non-trivial code modifications and additions.
-7. **Mock Data in Tests**:
-   - Tests must NOT make real LLM or external API calls. Always mock all LLM/network calls using mock data or responses.
-8. **No Fallback Behavior**:
-   - Do NOT use silent/invisible fallback logic (e.g. falling back to another model/provider, or silent catch-all exception blocks). Since this is an AI agent application, the user needs to know immediately and clearly if there is an error instead of invisible fallback failures.
-9. **LLM Client Queue and Retries**:
-   - All LLM queries must go through the thread-safe FIFO queue to ensure sequential execution. The client utilizes a dual-level retry policy (connection-level and LLM-level) with exponential backoff, failing cleanly with recognizable error string prefixes to calling agents when limits are reached.
-
+1. **Execution Environment**:
+   - OS: Windows. Shell: PowerShell (`pwsh`).
+   - Run Python via `uv run <command>`. Add packages via `uv add <package>`.
+   - Playwright requires chromium: run `playwright install chromium` if missing.
+   - CLI output formatting must use the 'Dr. Hops' ASCII art speech bubble rendering interface from `src/utils/formatting.py`.
+2. **AI Agent Centricity**:
+   - Prefer AI agents and LLM calls over heuristics, which are brittle and unreliable. Replace existing heuristics with LLM implementations where appropriate.
+   - All AI agents live in `src/agents/`. Design pattern: exactly one agent per file.
+3. **LLM Query Client**:
+   - All LLM queries must route through `src/services/llm_client.py`.
+   - Utilizes thread-safe FIFO queue, connection/LLM retries, and exponential backoff.
+   - Never catch errors silently: fail loudly using distinct error prefixes.
+4. **No Silent Fallbacks**:
+   - Avoid silent fallback strategies (like falling back to another provider or catching exceptions silently). Report errors to the user immediately.
+5. **Data Extraction & Tables**:
+   - Competitive landscape output in `generate_landscape_table.py` classifies pipeline assets using the batched LLM-based `classify_interventions()`. No hardcoded blocklists.
+   - Ensure landscape tables and PDF reports are audited using `validate_report.py` to prevent hallucinated IDs or data omissions.
+   - Maintain parameter backward-compatibility with `asset-pipeline-research` across scripts in `src/utils/`.
+6. **Testing Standards**:
+   - Strictly test-driven. Write unit/integration tests (`src/utils/test_*.py`) for all additions and changes.
+   - Do NOT make real network or LLM API calls in tests. Mock all external dependencies.
+7. **Secrets & Linting**:
+   - Run code formatting and lint checks using `ruff`.
+   - Do not commit secrets. Update/check `.secrets.baseline` using `detect-secrets` if configuring new variables.

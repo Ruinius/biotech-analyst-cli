@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from src.core.exceptions import ConfigError, ConfigNotFoundError
 
-CONFIG_FILE_PATH = Path(".env")
+CONFIG_FILE_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 def get_default_desktop() -> str:
