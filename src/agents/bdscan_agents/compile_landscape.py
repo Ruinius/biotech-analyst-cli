@@ -49,7 +49,7 @@ def compile_landscape_table(
             f"Landscape table generation failed: {res.stderr or res.stdout}"
         )
         # Write dummy empty table (with # column) so pipeline doesn't crash entirely
-        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
+        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
         divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
         dummy_md = f"{headers}\n{divider}\n"
         master_table_out.write_text(md_table_to_text_table(dummy_md), encoding="utf-8")

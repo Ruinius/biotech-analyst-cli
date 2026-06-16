@@ -216,10 +216,22 @@ def parse_existing_report(report_path, config):
                 modality_idx = col_indices.get("MoA / Modality", 3 if "#" in col_indices else 2)
                 formulation_idx = col_indices.get("Formulation", 4 if "#" in col_indices else 3)
                 indication_idx = col_indices.get("Lead Indication", 5 if "#" in col_indices else 4)
-                safety_idx = col_indices.get("Selectivity & Safety Profile", 8 if "#" in col_indices else 7)
-                efficacy_idx = col_indices.get("Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8)
-                milestones_idx = col_indices.get("Upcoming Milestones", 10 if "#" in col_indices else 9)
-                citations_idx = col_indices.get("Citations", 11 if "#" in col_indices else 10)
+                safety_idx = col_indices.get(
+                    "Web Selectivity & Safety Profile",
+                    col_indices.get("Selectivity & Safety Profile", 8 if "#" in col_indices else 7)
+                )
+                efficacy_idx = col_indices.get(
+                    "Web Key Efficacy Data",
+                    col_indices.get("Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8)
+                )
+                milestones_idx = col_indices.get(
+                    "Web Upcoming Milestones",
+                    col_indices.get("Upcoming Milestones", 10 if "#" in col_indices else 9)
+                )
+                citations_idx = col_indices.get(
+                    "Web Citations / Sources",
+                    col_indices.get("Citations", 11 if "#" in col_indices else 10)
+                )
 
                 if asset_idx >= len(cols):
                     continue
@@ -1166,7 +1178,7 @@ def main():
                 "name": asset_name,
                 "lead_val": lead_val,
                 "is_discontinued": is_discontinued_globally,
-                "row_markdown": f"| {name_cell} | {sponsor_str} | {modality} | {formulation_str} | {indication} | {lead_phase} | {trials_str} | {safety} | {efficacy} | {milestones} | {citations} |",
+                "row_markdown": f"| {name_cell} | {sponsor_str} | {modality} | {formulation_str} | {indication} | {lead_phase} | {trials_str} |",
             }
         )
 
@@ -1184,10 +1196,10 @@ def main():
     try:
         md_lines = []
         md_lines.append(
-            "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
+            "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs |"
         )
         md_lines.append(
-            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
         )
         for idx, row in enumerate(asset_rows, start=1):
             # Prepend the row number to the existing row markdown

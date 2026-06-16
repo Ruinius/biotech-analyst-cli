@@ -89,7 +89,7 @@ Next steps:
 - [ ] Segregate AI Agent tools and general utility scripts into separate folders:
   - Move all database query utilities, fetchers, and summarizers (e.g., ClinicalTrials, PubChem, openFDA, China CDE) into a dedicated `src/tools/` or `src/agents/tools/` folder to serve as the agent registry.
   - Keep `src/utils/` focused exclusively on non-agent scripts (e.g., PDF compilation, CLI formatting, ASCII art rendering, test suites).
-- the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
+- [x] the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
 - build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working
 - investigate the web-seach error in learning.md. It looks like there's a recurring issue with "valid API key" are there places where the llm_client is trying to call Gemini when it's been set tp deepseek? API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
 - what is "update_learnings" in asset_reserach_agent? Only the curator_agent can update learnings.

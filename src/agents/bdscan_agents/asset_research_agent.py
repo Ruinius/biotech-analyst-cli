@@ -34,21 +34,44 @@ def update_table_row(
     content = table_path.read_text(encoding="utf-8")
     lines = content.splitlines()
 
+    col_indices = {}
+    header_idx = -1
     for idx, line in enumerate(lines):
-        if not line.strip() or idx < 2:
+        if "|" in line and "Asset Name" in line:
+            header_idx = idx
+            cols = [c.strip() for c in line.split("|")]
+            for col_num, col_name in enumerate(cols):
+                if col_name:
+                    col_indices[col_name] = col_num
+            break
+
+    if header_idx == -1:
+        asset_idx = 1
+        safety_idx = 12
+        efficacy_idx = 13
+        milestones_idx = 14
+        citations_idx = 15
+    else:
+        asset_idx = col_indices.get("Asset Name", 1)
+        safety_idx = col_indices.get("Web Selectivity & Safety Profile", 12)
+        efficacy_idx = col_indices.get("Web Key Efficacy Data", 13)
+        milestones_idx = col_indices.get("Web Upcoming Milestones", 14)
+        citations_idx = col_indices.get("Web Citations / Sources", 15)
+
+    for idx, line in enumerate(lines):
+        if not line.strip() or idx <= header_idx + 1:
             continue
         cols = [c.strip() for c in line.split("|")]
-        if len(cols) < 3:
+        if len(cols) <= max(asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx):
             continue
 
-        name_cell = cols[1]
+        name_cell = cols[asset_idx]
         cleaned_name = clean_cell_to_name(name_cell)
         if cleaned_name.lower() == asset_name.lower():
-            # Update columns 12, 13, 14, 15 (which correspond to Web columns)
-            cols[12] = safety.replace("\n", " ").replace("|", "\\|")
-            cols[13] = efficacy.replace("\n", " ").replace("|", "\\|")
-            cols[14] = milestones.replace("\n", " ").replace("|", "\\|")
-            cols[15] = citations.replace("\n", " ").replace("|", "\\|")
+            cols[safety_idx] = safety.replace("\n", " ").replace("|", "\\|")
+            cols[efficacy_idx] = efficacy.replace("\n", " ").replace("|", "\\|")
+            cols[milestones_idx] = milestones.replace("\n", " ").replace("|", "\\|")
+            cols[citations_idx] = citations.replace("\n", " ").replace("|", "\\|")
             lines[idx] = "| " + " | ".join(cols[1:-1]) + " |"
             break
 
@@ -192,22 +215,46 @@ class AssetResearchAgent:
         content = table_path.read_text(encoding="utf-8")
         lines = content.splitlines()
 
+        col_indices = {}
+        header_idx = -1
+        for idx, line in enumerate(lines):
+            if "|" in line and "Asset Name" in line:
+                header_idx = idx
+                cols = [c.strip() for c in line.split("|")]
+                for col_num, col_name in enumerate(cols):
+                    if col_name:
+                        col_indices[col_name] = col_num
+                break
+
+        if header_idx == -1:
+            asset_idx = 1
+            safety_idx = 12
+            efficacy_idx = 13
+            milestones_idx = 14
+            citations_idx = 15
+        else:
+            asset_idx = col_indices.get("Asset Name", 1)
+            safety_idx = col_indices.get("Web Selectivity & Safety Profile", 12)
+            efficacy_idx = col_indices.get("Web Key Efficacy Data", 13)
+            milestones_idx = col_indices.get("Web Upcoming Milestones", 14)
+            citations_idx = col_indices.get("Web Citations / Sources", 15)
+
         parent_safety = "Duplicate. Refer to parent."
         parent_efficacy = "Duplicate. Refer to parent."
         parent_milestones = "Duplicate. Refer to parent."
         parent_citations = "N/A"
 
         for idx, line in enumerate(lines):
-            if not line.strip() or idx < 2:
+            if not line.strip() or idx <= header_idx + 1:
                 continue
             cols = [c.strip() for c in line.split("|")]
-            if len(cols) < 3:
+            if len(cols) <= max(asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx):
                 continue
-            if clean_cell_to_name(cols[1]).lower() == parent_name.lower():
-                parent_safety = cols[12]
-                parent_efficacy = cols[13]
-                parent_milestones = cols[14]
-                parent_citations = cols[15]
+            if clean_cell_to_name(cols[asset_idx]).lower() == parent_name.lower():
+                parent_safety = cols[safety_idx]
+                parent_efficacy = cols[efficacy_idx]
+                parent_milestones = cols[milestones_idx]
+                parent_citations = cols[citations_idx]
                 break
 
         update_table_row(

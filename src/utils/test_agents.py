@@ -159,9 +159,9 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
 
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
-    headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-    row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety placeholder | efficacy placeholder | milestones placeholder | citations placeholder | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
     agent = AssetResearchAgent(settings, target_dir)
@@ -172,10 +172,10 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
     lines = content.splitlines()
     assert len(lines) == 3
     cols = [c.strip() for c in lines[2].split("|")]
-    assert cols[12] == "Mild nausea"
-    assert cols[13] == "ORR 60%"
-    assert cols[14] == "Readout 2027"
-    assert cols[15] == "ASCO 2026"
+    assert cols[8] == "Mild nausea"
+    assert cols[9] == "ORR 60%"
+    assert cols[10] == "Readout 2027"
+    assert cols[11] == "ASCO 2026"
 
 
 @patch("src.services.llm_client.LLMClient.query")
@@ -380,9 +380,9 @@ def test_bdscan_pipeline_integration(mock_run, mock_query, settings, target_dir)
             output_idx = cmd.index("--output") if "--output" in cmd else -1
             if output_idx != -1:
                 out_path = str(cmd[output_idx + 1])
-                headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |"
-                divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-                row = "| **Mock Drug** | Mock Sponsor | mAb | IV | Gastric | Phase 2 | NCT00000000 | safety | efficacy | milestones | citations |"
+                headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs |"
+                divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+                row = "| **Mock Drug** | Mock Sponsor | mAb | IV | Gastric | Phase 2 | NCT00000000 |"
                 with open(out_path, "w", encoding="utf-8") as f:
                     f.write(f"{headers}\n{divider}\n{row}\n")
         elif "convert_md_to_pdf.py" in cmd_str:
@@ -669,7 +669,7 @@ def test_parse_existing_report_dynamic_columns(tmp_path):
 
     # Test table with leading # column
     table_with_hash = (
-        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
         "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
         "| 1 | **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
     )
@@ -687,7 +687,7 @@ def test_parse_existing_report_dynamic_columns(tmp_path):
 
     # Test table without leading # column
     table_no_hash = (
-        "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
         "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
         "| **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val2 | efficacy_val2 | milestone_val2 | citation_val2 |\n"
     )
@@ -705,7 +705,7 @@ def test_parse_report_table_dynamic_columns(tmp_path):
 
     # Test table with leading # column
     table_with_hash = (
-        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Selectivity & Safety Profile | Key Efficacy / Biomarker Data | Upcoming Milestones | Citations |\n"
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
         "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
         "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
     )
