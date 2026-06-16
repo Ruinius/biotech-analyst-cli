@@ -5,6 +5,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 1: Structure & Orchestration Setup
+
 - [x] Move `bdscan` and `deepdive` pipeline execution logic out of [main.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/cli/main.py).
 - [x] Create orchestrators [bdscan_orchestrator.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/core/bdscan_orchestrator.py) and [deepdive_orchestrator.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/core/deepdive_orchestrator.py) under `src/core/`.
 - [x] Create the agent directories `src/agents/bdscan_agents/` and `src/agents/deepdive_agents/` to house individual agent implementations.
@@ -14,6 +15,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 2: Agent Implementations
+
 - [x] **Context Agent (`context_agent.py`):**
   - Implement a 1-turn generation logic to write short, science-focused `context.md` files (shorter than the legacy `asset-pipeline-research` version to avoid downstream context bloating).
 - [x] **Database Search Agent (`db_search_agent.py`):**
@@ -25,7 +27,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] **Asset Research Agent (`asset_research_agent.py`):**
   - Implement the 4-turn row-specific web research loop.
   - Implement `web_search` and `edit_landscape_table` tools.
-  - Ensure the agent writes web research outputs into *new* columns in the master table, keeping the database-fetched columns immutable to prevent hallucination.
+  - Ensure the agent writes web research outputs into _new_ columns in the master table, keeping the database-fetched columns immutable to prevent hallucination.
   - Focus alternative name and laboratory code queries on resolving partner/sponsor codes for the same asset.
   - Design the loop to track alternative names discovered so that duplicate assets/rows in the table are marked to avoid redundant web search effort.
 - [x] **Final Synthesis Agent (`synthesis_agent.py`):**
@@ -36,6 +38,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 3: Curator Agent & Curation Loop
+
 - [x] **Curator Agent (`curator_agent.py`):**
   - Implement stage-end logic to ingest execution logs from `db_search_agent` and `asset_research_agent`.
   - Update sections `## database-search` and `## web-search` inside the global [learning.md](file:///f:/AIML%20projects/biotech-analyst-cli/src/agents/learning.md) file (limiting each section to 20 lines max).
@@ -43,6 +46,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 4: CLI Command Routing & End-to-End Validation
+
 - [x] Update `ba bdscan` and `ba deepdive` commands in [main.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/cli/main.py) to route execution through `src/core/bdscan_orchestrator.py` and `src/core/deepdive_orchestrator.py`.
 - [x] Write integration test cases to execute and verify the multi-agent execution pipeline.
 - [x] Run the end-to-end pipeline and verify generated output tables, reports, and compiled PDFs.
@@ -53,6 +57,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ---
 
 ## Phase 5: Reliability & Queue Management
+
 - [x] **LLM Client Queue:** Implement a thread-safe sequential FIFO queue manager in `LLMClient` to process all LLM requests one by one, eliminating race conditions.
 - [x] **Dual-Level Retry & Backoff:**
   - Implement connection-level retries (on `httpx.RequestError` timeouts or drops) up to 3 times with exponential backoff (1s base, 2x multiplier).
@@ -61,3 +66,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] **Pytest Mock Compatibility:** Establish a synchronous bypass/fallback mode using a lock when running in `pytest` to prevent scoping or timeout issues with test mocks.
 - [x] **Comprehensive Testing:** Add config and client-level test cases in `test_config.py` verifying retry sequences, queue processing order, and immediate fail behaviors.
 
+Next steps:
+
+- config needs option to switch LLM provider and models
+- double check the default config for folder name

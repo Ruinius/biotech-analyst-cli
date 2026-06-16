@@ -60,9 +60,11 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
     - `src/utils/generate_landscape_table.py`: Programmatic competitive landscape table compiler.
     - `src/utils/validate_report.py`: Programmatic report audit and quality guardrail validator.
     - `src/utils/convert_md_to_pdf.py`: Paginated Markdown-to-PDF compiler.
+    - `src/utils/query_parser.py`: LLM-based query parser with local fallback routines.
     - `src/utils/run_tests.py`: Automated testing suite for fetchers/summarizers.
     - `src/utils/test_agents.py`: Unit and integration test suite for multi-agent loops.
     - `src/utils/test_config.py`: Unit test suite for configuration and model preferences.
+    - `src/utils/test_query_parser.py`: Unit tests for the query parsing and fallback utility.
 
 ---
 

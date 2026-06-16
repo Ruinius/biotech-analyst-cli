@@ -15,9 +15,17 @@ import os
 import typer
 
 from src.core.bdscan_orchestrator import run_bdscan_pipeline
-from src.core.config import Settings, config_exists, load_config, mask_key, save_config
+from src.core.config import (
+    Settings,
+    config_exists,
+    get_default_desktop,
+    load_config,
+    mask_key,
+    save_config,
+)
 from src.core.deepdive_orchestrator import run_deepdive_pipeline
 from src.utils import formatting
+from src.utils.query_parser import parse_query_via_llm
 
 app = typer.Typer(
     name="ba",
@@ -42,7 +50,7 @@ def main_config():
 
     default_name = current.full_name if current else ""
     default_email = current.email if current else ""
-    default_base = current.base_folder if current else str(Path.home() / "Desktop")
+    default_base = current.base_folder if current else get_default_desktop()
     default_gemini = current.gemini_api_key if current else ""
     default_openrouter = current.openrouter_api_key if current else ""
     default_deepseek = current.deepseek_api_key if current else ""
@@ -253,6 +261,10 @@ def main_folder():
 @app.command("bdscan")
 def main_bdscan(
     action: str = typer.Argument(..., help="Action to perform: 'new' or 'rerun'"),
+    query: str = typer.Argument(
+        None,
+        help="The target pathway or molecule-class search query (e.g. 'Claudin 18.2 ADC')",
+    ),
 ):
     """Execute target pathway or molecule-class broad meta-analysis scanning."""
     if not config_exists():
@@ -271,24 +283,30 @@ def main_bdscan(
     modality = ""
 
     if action == "new":
-        target_name = typer.prompt(
-            "Enter pathway/target biological name (e.g. CLDN18.2)"
-        )
-        target_name = target_name.strip()
-        if not target_name:
-            formatting.print_error("Target name cannot be empty.")
+        active_query = query
+        if not active_query:
+            active_query = typer.prompt(
+                "Enter pathway/target/query (e.g. Claudin 18.2 ADC)"
+            )
+        active_query = active_query.strip()
+        if not active_query:
+            formatting.print_error("Search query cannot be empty.")
             raise typer.Exit(1)
 
-        en_terms = typer.prompt(
-            "Enter English search synonyms (comma-separated)",
-            default=f"{target_name}, {target_name.replace('.', '')}",
-        )
-        zh_terms = typer.prompt(
-            "Enter Mandarin search synonyms (comma-separated)", default=target_name
-        )
-        modality = typer.prompt(
-            "Enter modality filter (e.g. ADC, Bispecific, Small Molecule or empty)",
-            default="",
+        formatting.print_info("Analyzing search query with AI agent. Please wait...")
+        parsed = parse_query_via_llm(active_query)
+        target_name = parsed["target_name"]
+        en_list = parsed["en_list"]
+        zh_list = parsed["zh_list"]
+        modality = parsed["modality"]
+
+        formatting.speak(
+            f"Fascinating query! I have extracted the following parameters:\n\n"
+            f"  [bold]Target Name:[/bold] {target_name}\n"
+            f"  [bold]Modality Filter:[/bold] {modality if modality else 'None'}\n"
+            f"  [bold]English Synonyms:[/bold] {', '.join(en_list)}\n"
+            f"  [bold]Mandarin Synonyms:[/bold] {', '.join(zh_list)}\n",
+            include_interjection=False,
         )
 
         # Format target folder name
@@ -298,9 +316,6 @@ def main_bdscan(
         )
         target_folder_name = f"{today}_{folder_safe_name}_Scan"
         target_dir = base_path / target_folder_name
-
-        en_list = [t.strip() for t in en_terms.split(",") if t.strip()]
-        zh_list = [t.strip() for t in zh_terms.split(",") if t.strip()]
 
     elif action == "rerun":
         folders = get_folders_list(base_path)

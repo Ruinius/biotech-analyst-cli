@@ -22,7 +22,9 @@ class LLMQueueManager:
         with self.lock:
             if self.worker_thread is None or not self.worker_thread.is_alive():
                 self._stop_event.clear()
-                self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+                self.worker_thread = threading.Thread(
+                    target=self._worker_loop, daemon=True
+                )
                 self.worker_thread.start()
 
     def _worker_loop(self):
@@ -87,7 +89,9 @@ class LLMClient:
         _queue_manager.start_worker()
 
         result_queue = queue.Queue()
-        _queue_manager.queue.put((self._execute_query, (prompt, system_instruction), {}, result_queue))
+        _queue_manager.queue.put(
+            (self._execute_query, (prompt, system_instruction), {}, result_queue)
+        )
 
         res, err = result_queue.get()
         if err is not None:
@@ -140,7 +144,9 @@ class LLMClient:
                     )
                     time.sleep(delay)
                 else:
-                    logger.error(f"Fatal LLM API error (HTTP {status_code}): {e.response.text[:200]}")
+                    logger.error(
+                        f"Fatal LLM API error (HTTP {status_code}): {e.response.text[:200]}"
+                    )
                     raise
             except httpx.RequestError as e:
                 conn_attempt += 1
@@ -150,7 +156,9 @@ class LLMClient:
                         f"Error: {e}"
                     )
                     raise
-                delay = initial_connection_delay * (connection_backoff ** (conn_attempt - 1))
+                delay = initial_connection_delay * (
+                    connection_backoff ** (conn_attempt - 1)
+                )
                 logger.warning(
                     f"API Connection error: {e}. "
                     f"Retrying at connection level in {delay:.1f}s (Attempt {conn_attempt}/{max_connection_retries})..."

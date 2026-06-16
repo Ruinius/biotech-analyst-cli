@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.core.exceptions import ConfigError, ConfigNotFoundError
 
@@ -8,8 +8,8 @@ CONFIG_FILE_PATH = Path(".env")
 
 
 def get_default_desktop() -> str:
-    """Get path to the user's Desktop/AI_Native_2026 directory as default base folder."""
-    return str(Path.home() / "Desktop" / "AI_Native_2026")
+    """Get generic path to the user's Desktop/AI_Native_2026 directory."""
+    return "~/Desktop/AI_Native_2026"
 
 
 class Settings(BaseModel):
@@ -30,6 +30,13 @@ class Settings(BaseModel):
         None, description="OpenRouter model preference"
     )
     deepseek_model: str | None = Field(None, description="DeepSeek model preference")
+
+    @field_validator("base_folder")
+    @classmethod
+    def expand_base_folder(cls, v: str) -> str:
+        if v:
+            return str(Path(v).expanduser())
+        return v
 
 
 def config_exists() -> bool:
@@ -83,6 +90,9 @@ def load_config() -> Settings:
         # Backwards compatibility and fallbacks
         if "base_folder" not in data or not data["base_folder"]:
             data["base_folder"] = get_default_desktop()
+
+        if data.get("base_folder"):
+            data["base_folder"] = str(Path(data["base_folder"]).expanduser())
 
         return Settings(**data)
     except Exception as e:

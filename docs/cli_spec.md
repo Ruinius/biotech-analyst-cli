@@ -40,10 +40,11 @@ All commands are executed using `uv run ba <command>` or via the global activate
 
 ---
 
-### `ba bdscan [new/rerun]`
+### `ba bdscan [new/rerun] [query]`
 * **Objective:** Orchestrates target pathway and molecule-class broad meta-analysis scanning.
 * **Arguments:**
-  * `new`: Prompts for pathway/target names, synonyms, and modalities. Creates the output folder structure and triggers the Multi-Agent Pipeline.
+  * `action` (required): `new` or `rerun`.
+  * `query` (optional, for `new` action): The target pathway search query (e.g. `"Claudin 18.2 ADC"` or `"Claudin 18.2 pancreatic cancer"`). If not provided on the command line, the user will be prompted to enter it. The pipeline automatically extracts the target name, English/Mandarin search synonyms, and modality filters from this query.
   * `rerun`: Allows selecting an existing scan directory and re-runs the pipeline.
 * **Options:** None required.
 * **Output Folders:**

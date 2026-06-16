@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -38,6 +39,19 @@ def test_settings_backwards_compatibility(temp_config_path):
     assert settings.gemini_model is None
     assert settings.openrouter_model is None
     assert settings.deepseek_model is None
+
+
+def test_settings_base_folder_expansion(temp_config_path):
+    temp_config_path.write_text(
+        'FULL_NAME="Test User"\n'
+        'EMAIL="test@test.com"\n'
+        'BASE_FOLDER="~/Desktop/AI_Native_2026"\n',
+        encoding="utf-8",
+    )
+
+    settings = load_config()
+    expected_path = str(Path.home() / "Desktop" / "AI_Native_2026")
+    assert settings.base_folder == expected_path
 
 
 def test_settings_save_and_load(temp_config_path):
@@ -169,7 +183,9 @@ def test_llm_client_connection_retry(mock_post, mock_load_config):
     )
 
     # Mock post to raise RequestError
-    mock_post.side_effect = httpx.RequestError("Connection timeout", request=MagicMock())
+    mock_post.side_effect = httpx.RequestError(
+        "Connection timeout", request=MagicMock()
+    )
 
     client = LLMClient()
     client.max_connection_retries = 2
@@ -199,7 +215,9 @@ def test_llm_client_llm_level_retry(mock_post, mock_load_config):
     response_429 = MagicMock()
     response_429.status_code = 429
     response_429.text = "Rate Limit Exceeded"
-    response_429.raise_for_status.side_effect = httpx.HTTPStatusError("Rate Limit", request=MagicMock(), response=response_429)
+    response_429.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Rate Limit", request=MagicMock(), response=response_429
+    )
     mock_post.return_value = response_429
 
     client = LLMClient()
@@ -227,7 +245,9 @@ def test_llm_client_fatal_error_no_retry(mock_post, mock_load_config):
     response_401 = MagicMock()
     response_401.status_code = 401
     response_401.text = "Unauthorized key"
-    response_401.raise_for_status.side_effect = httpx.HTTPStatusError("Unauthorized", request=MagicMock(), response=response_401)
+    response_401.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Unauthorized", request=MagicMock(), response=response_401
+    )
     mock_post.return_value = response_401
 
     client = LLMClient()
@@ -241,9 +261,10 @@ def test_llm_client_fatal_error_no_retry(mock_post, mock_load_config):
 
 
 def test_llm_queue_manager_sequential():
-    from src.services.llm_client import LLMQueueManager
     import queue
     import time
+
+    from src.services.llm_client import LLMQueueManager
 
     mgr = LLMQueueManager()
     mgr.start_worker()
@@ -277,4 +298,3 @@ def test_llm_queue_manager_sequential():
     mgr.queue.put(None)
     if mgr.worker_thread:
         mgr.worker_thread.join(timeout=1.0)
-
