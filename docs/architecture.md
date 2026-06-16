@@ -49,7 +49,7 @@ biotech-analyst-cli/
 │   │   ├── bdscan_orchestrator.py  # Orchestrator for the BD Scan agents
 │   │   └── deepdive_orchestrator.py # Orchestrator for the Deep Dive agents
 │   ├── services/                   # Unified API services
-│   │   └── llm_client.py           # Gemini, OpenRouter, and DeepSeek client
+│   │   └── llm_client.py           # Gemini, OpenRouter, and DeepSeek client (with thread-safe sequential queue and dual-level retry/backoff)
 │   ├── agents/                     # Multi-Agent workflows
 │   │   ├── learning.md             # Global pipeline learnings and lessons
 │   │   ├── bdscan_agents/          # Pathway Broad Scan agent directory
@@ -87,3 +87,13 @@ biotech-analyst-cli/
 2. **Interactive Folder Navigator (`ba folder`):** Interactive listing of research folders enabling users to browse and open directories in Windows Explorer.
 3. **Pathway Scan (`ba bdscan`):** Runs the agent-based scanner to construct context files, query databases in multiple languages, compile competitive matrices, conduct web searches, validate results, and generate paginated PDFs.
 4. **Diligence Deep-dive (`ba deepdive`):** Queries registries, openFDA, and PubChem for a single asset, logs results to markdown files, and compiles a comprehensive due diligence memo.
+
+---
+
+## 4. LLM Client Reliability and Race Condition Prevention
+
+To guarantee robust operations during high-frequency agent execution, the `LLMClient` incorporates the following features:
+1. **Thread-Safe Sequential Queue:** Every LLM call is routed through a global module-level FIFO queue processed sequentially by a daemon worker thread. This prevents race conditions and LLM service overloading. Under Pytest execution, a synchronous lock-based mechanism is used to ensure compatibility with unit test mocks.
+2. **Dual-Level Retry & Backoff:** 
+   - **Connection Level:** Retries on connection timeouts or network drops (`httpx.RequestError`) up to 3 times, using exponential backoff (1.0s base, 2.0x multiplier).
+   - **LLM Level:** Retries on transient API/server errors (`httpx.HTTPStatusError` with codes 429, 500, 502, 503, 504) up to 5 times, using exponential backoff (2.0s base, 2.0x multiplier). Fatal client errors (e.g. 400, 401, 403, 404) fail immediately.

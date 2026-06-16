@@ -29,6 +29,13 @@ from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
 
 
+@pytest.fixture(autouse=True)
+def mock_config_env(tmp_path):
+    temp_file = tmp_path / ".env"
+    with patch("src.core.config.CONFIG_FILE_PATH", temp_file):
+        yield temp_file
+
+
 @pytest.fixture
 def settings():
     return Settings(

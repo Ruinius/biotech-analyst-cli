@@ -62,6 +62,7 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
     - `src/utils/convert_md_to_pdf.py`: Paginated Markdown-to-PDF compiler.
     - `src/utils/run_tests.py`: Automated testing suite for fetchers/summarizers.
     - `src/utils/test_agents.py`: Unit and integration test suite for multi-agent loops.
+    - `src/utils/test_config.py`: Unit test suite for configuration and model preferences.
 
 ---
 
@@ -89,3 +90,6 @@ Welcome to the **Biotech Analyst CLI (`ba`)** project. This file indexes the wor
    - Tests must NOT make real LLM or external API calls. Always mock all LLM/network calls using mock data or responses.
 8. **No Fallback Behavior**:
    - Do NOT use silent/invisible fallback logic (e.g. falling back to another model/provider, or silent catch-all exception blocks). Since this is an AI agent application, the user needs to know immediately and clearly if there is an error instead of invisible fallback failures.
+9. **LLM Client Queue and Retries**:
+   - All LLM queries must go through the thread-safe FIFO queue to ensure sequential execution. The client utilizes a dual-level retry policy (connection-level and LLM-level) with exponential backoff, failing cleanly with recognizable error string prefixes to calling agents when limits are reached.
+

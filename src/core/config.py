@@ -8,8 +8,8 @@ CONFIG_FILE_PATH = Path(".env")
 
 
 def get_default_desktop() -> str:
-    """Get path to the user's Desktop directory as default base folder."""
-    return str(Path.home() / "Desktop")
+    """Get path to the user's Desktop/AI_Native_2026 directory as default base folder."""
+    return str(Path.home() / "Desktop" / "AI_Native_2026")
 
 
 class Settings(BaseModel):
@@ -21,6 +21,15 @@ class Settings(BaseModel):
     gemini_api_key: str | None = Field(None, description="Gemini API Key")
     openrouter_api_key: str | None = Field(None, description="OpenRouter API Key")
     deepseek_api_key: str | None = Field(None, description="DeepSeek API Key")
+    llm_provider: str = Field(
+        "gemini", description="Selected LLM provider (gemini, openrouter, deepseek)"
+    )
+    llm_model: str | None = Field(None, description="Selected LLM model name")
+    gemini_model: str | None = Field(None, description="Gemini model preference")
+    openrouter_model: str | None = Field(
+        None, description="OpenRouter model preference"
+    )
+    deepseek_model: str | None = Field(None, description="DeepSeek model preference")
 
 
 def config_exists() -> bool:

@@ -15,16 +15,16 @@ All commands are executed using `uv run ba <command>` or via the global activate
 ## 2. CLI Command Reference
 
 ### `ba config`
-* **Objective:** Interactive wizard to set up or modify your user profile and API key settings.
+* **Objective:** Interactive wizard to set up or modify your user profile and API key/model settings.
 * **Flow:**
   1. Prompts for `Full Name` (uses existing config default if present).
   2. Prompts for `Email Address`.
   3. Prompts for `Base Folder` target for all research outputs.
-  4. Interactive confirmation: "Would you like to configure API keys for LLM report drafting?".
-     * Prompts for `Gemini API Key`.
-     * Prompts for `OpenRouter API Key`.
-     * Prompts for `DeepSeek API Key`.
-  5. Saves configuration settings directly to `.env` in the current folder.
+  4. Interactive confirmation: "Would you like to configure LLM settings?".
+     * Prompts to select the active `LLM Provider` (`gemini`, `openrouter`, or `deepseek`).
+     * Prompts for the API key of the selected provider.
+     * Prompts to type the custom model name to use for that provider.
+  5. Saves configuration settings directly to `.env` in the current folder, retaining legacy keys and preferences for other non-active providers.
   6. Renders a masked configuration summary.
 
 ---

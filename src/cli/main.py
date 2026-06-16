@@ -46,6 +46,14 @@ def main_config():
     default_gemini = current.gemini_api_key if current else ""
     default_openrouter = current.openrouter_api_key if current else ""
     default_deepseek = current.deepseek_api_key if current else ""
+    default_provider = (
+        current.llm_provider if (current and current.llm_provider) else "gemini"
+    )
+    default_model = current.llm_model if current else None
+
+    default_gemini_model = current.gemini_model if current else None
+    default_openrouter_model = current.openrouter_model if current else None
+    default_deepseek_model = current.deepseek_model if current else None
 
     # Prompts
     name = typer.prompt("Enter your full name", default=default_name)
@@ -56,28 +64,78 @@ def main_config():
 
     # Ask if they want to configure API keys
     configure_keys = typer.confirm(
-        "Would you like to configure API keys for LLM report drafting?", default=True
+        "Would you like to configure LLM settings?", default=True
     )
+    provider = default_provider
     gemini_key = default_gemini
     openrouter_key = default_openrouter
     deepseek_key = default_deepseek
+    gemini_model = default_gemini_model
+    openrouter_model = default_openrouter_model
+    deepseek_model = default_deepseek_model
+    active_model = default_model
 
     if configure_keys:
-        gemini_key = typer.prompt(
-            "Gemini API Key (press Enter to keep current)",
-            default=default_gemini,
-            show_default=False,
+        provider = (
+            typer.prompt(
+                "Select LLM Provider (gemini, openrouter, deepseek)",
+                default=default_provider,
+            )
+            .strip()
+            .lower()
         )
-        openrouter_key = typer.prompt(
-            "OpenRouter API Key (press Enter to keep current)",
-            default=default_openrouter,
-            show_default=False,
-        )
-        deepseek_key = typer.prompt(
-            "DeepSeek API Key (press Enter to keep current)",
-            default=default_deepseek,
-            show_default=False,
-        )
+        while provider not in ("gemini", "openrouter", "deepseek"):
+            formatting.print_error(
+                "Invalid provider. Please choose from: gemini, openrouter, deepseek."
+            )
+            provider = (
+                typer.prompt(
+                    "Select LLM Provider (gemini, openrouter, deepseek)",
+                    default=default_provider,
+                )
+                .strip()
+                .lower()
+            )
+
+        if provider == "gemini":
+            gemini_key = typer.prompt(
+                "Gemini API Key (press Enter to keep current)",
+                default=default_gemini,
+                show_default=False,
+            )
+            gemini_model = typer.prompt(
+                "Gemini Model (press Enter for default)",
+                default=default_gemini_model
+                if default_gemini_model
+                else "gemini-1.5-flash",
+            ).strip()
+            active_model = gemini_model
+        elif provider == "openrouter":
+            openrouter_key = typer.prompt(
+                "OpenRouter API Key (press Enter to keep current)",
+                default=default_openrouter,
+                show_default=False,
+            )
+            openrouter_model = typer.prompt(
+                "OpenRouter Model (press Enter for default)",
+                default=default_openrouter_model
+                if default_openrouter_model
+                else "google/gemma-2-9b-it:free",
+            ).strip()
+            active_model = openrouter_model
+        elif provider == "deepseek":
+            deepseek_key = typer.prompt(
+                "DeepSeek API Key (press Enter to keep current)",
+                default=default_deepseek,
+                show_default=False,
+            )
+            deepseek_model = typer.prompt(
+                "DeepSeek Model (press Enter for default)",
+                default=default_deepseek_model
+                if default_deepseek_model
+                else "deepseek-chat",
+            ).strip()
+            active_model = deepseek_model
 
     # Save
     new_settings = Settings(
@@ -87,6 +145,11 @@ def main_config():
         gemini_api_key=gemini_key if gemini_key else None,
         openrouter_api_key=openrouter_key if openrouter_key else None,
         deepseek_api_key=deepseek_key if deepseek_key else None,
+        llm_provider=provider,
+        llm_model=active_model,
+        gemini_model=gemini_model if gemini_model else None,
+        openrouter_model=openrouter_model if openrouter_model else None,
+        deepseek_model=deepseek_model if deepseek_model else None,
     )
 
     try:
@@ -99,6 +162,8 @@ def main_config():
             f"  [bold]Name:[/bold] {name}\n"
             f"  [bold]Email:[/bold] {email}\n"
             f"  [bold]Base Folder:[/bold] {base_folder}\n"
+            f"  [bold]LLM Provider:[/bold] {provider}\n"
+            f"  [bold]LLM Model:[/bold] {active_model}\n"
             f"  [bold]Gemini Key:[/bold] {mask_key(gemini_key)}\n"
             f"  [bold]OpenRouter Key:[/bold] {mask_key(openrouter_key)}\n"
             f"  [bold]DeepSeek Key:[/bold] {mask_key(deepseek_key)}\n",
