@@ -27,6 +27,7 @@ from src.agents.bdscan_agents.curator_agent import CuratorAgent
 from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
 from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
+from src.core.exceptions import PipelineError
 
 
 @pytest.fixture(autouse=True)
@@ -79,6 +80,32 @@ def test_context_agent(mock_query, settings, target_dir):
     content = context_path.read_text(encoding="utf-8")
     assert "# Context Overview: TestPathway Sourcing" in content
     assert "Mock target biology details." in content
+
+
+@patch("src.services.llm_client.LLMClient.query")
+@pytest.mark.parametrize(
+    "llm_output",
+    [
+        None,
+        "",
+        "Error: API key is invalid",
+        "Failed to call OpenRouter API after retries",
+    ],
+)
+def test_context_agent_failure(mock_query, settings, target_dir, llm_output):
+    mock_query.return_value = llm_output
+
+    with pytest.raises(PipelineError) as exc_info:
+        generate_context(
+            settings=settings,
+            target_name="TestPathway",
+            en_list=["Test1"],
+            zh_list=["测试1"],
+            modality="ADC",
+            target_dir=target_dir,
+        )
+
+    assert "LLM context generation failed or returned error" in str(exc_info.value)
 
 
 @patch("src.services.llm_client.LLMClient.query")

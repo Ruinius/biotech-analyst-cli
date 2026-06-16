@@ -2,6 +2,7 @@ import datetime
 from pathlib import Path
 
 from src.core.config import Settings
+from src.core.exceptions import PipelineError
 from src.services.llm_client import LLMClient
 from src.utils import formatting
 
@@ -49,22 +50,14 @@ def generate_context(
     client = LLMClient()
     response_text = client.query(prompt, system_instruction)
 
-    # Fallback if query failed or returned empty/error
+    # Raise error if query failed or returned empty/error
     if (
         not response_text
         or response_text.startswith("Error:")
         or response_text.startswith("Failed to call")
     ):
-        formatting.print_warning(
-            "LLM context generation failed or returned error. Falling back to default template."
-        )
-        response_text = (
-            f"## 1. Biology and Scientific Rationale\n"
-            f"Target {target_name} is a biological pathway/molecule class. Active clinical and pre-clinical research focuses on validating its roles in disease progression.\n\n"
-            f"## 2. Clinical Settings and Disease Areas\n"
-            f"Evaluated primarily in oncology and solid tumor indications matching target expression profiles.\n\n"
-            f"## 3. Modality Considerations\n"
-            f"Explores monoclonal antibodies, antibody-drug conjugates, and bispecific immune-engagers."
+        raise PipelineError(
+            f"LLM context generation failed or returned error: {response_text}"
         )
 
     # Format the context file

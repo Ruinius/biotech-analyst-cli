@@ -68,13 +68,17 @@ This document lays out the milestones and tasks to implement the new agentic arc
 
 Next steps:
 
-- config needs option to switch LLM provider and models
-- double check the default config for folder name
 - [x] format the landscape and the final output table so that it shows as a table when opened with text (Unicode box-drawing `.txt` + `#` row-number column)
+- [x] in the context_agent, kill the fallback. The run should just stop with an error. NO FALLBACKS.
+- config needs option to switch LLM provider and models. Maybe call it "ba config llm"
+- double check the default config for folder name. I still see address specific to my computer instead of a generic address.
+- double check how does db_search_agent actually work. Does it create a table of data that is merged at the end? I see jsons, but I see only clinicaltrials.gov and CDE are merged. What about the others?
+- double check that when generating the final output table, that same assets with different names are actually merged. I see a bunch of web search pending right now in the final table.
+- other targets, such as HER2 and generic terms such as immunotherapy are sneaking into the "Asset Name" column in the landscape and final output table. Double check if the asset name column is heuristics (which is failing) or AI Agent based. The asset name column should be a molecule name, a brand name, or a codename (e.g., TST001)
+- the scan for Claudin 18.2 failed to found Osemitamab but called it TST001. When we do the final synthesis, let's
+- the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
 - build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working
-- in the context_agent, kill the fallback. The run should just stop with an error. NO FALLBACKS.
 - investigate the web-seach error in learning.md. It looks like there's a recurring issue with "valid API key" are there places where the llm_client is trying to call Gemini when it's been set tp deepseek? API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
-- double check how does db_search_agent actually work. Does it create a table of data that is merged? I see jsons, but I see only clinicaltrials.gov and CDE are merged. What about the others?
 - what is "update_learnings" in asset_reserach_agent? Only the curator_agent can update learnings.
 - error when searching in Chinese:
   Traceback (most recent call last):
