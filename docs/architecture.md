@@ -22,7 +22,7 @@ graph TD
     Agents --> Registry
 
     Agents --> Curator[Curator Agent]
-    Curator --> GlobalLearning[Global learning.md in Root]
+    Curator --> GlobalLearning[Global learning.md in src/agents/]
 
     Agents --> PDF[Markdown-to-PDF Compiler]
     deepdive --> PDF
@@ -51,6 +51,7 @@ biotech-analyst-cli/
 │   ├── services/                   # Unified API services
 │   │   └── llm_client.py           # Gemini, OpenRouter, and DeepSeek client
 │   ├── agents/                     # Multi-Agent workflows
+│   │   ├── learning.md             # Global pipeline learnings and lessons
 │   │   ├── bdscan_agents/          # Pathway Broad Scan agent directory
 │   │   │   ├── context_agent.py    # 1-turn scientific context compiler
 │   │   │   ├── db_search_agent.py  # 4-turn database search coordinator
@@ -76,7 +77,6 @@ biotech-analyst-cli/
 │   └── main.py                     # Entry point routing to src/cli/main.py
 ├── pyproject.toml                  # Python package configuration (uv managed)
 ├── uv.lock                         # Lockfile for python packages
-├── learning.md                     # Global pipeline learnings and lessons
 └── AGENTS.md                       # Project index and architectural constraints
 ```
 

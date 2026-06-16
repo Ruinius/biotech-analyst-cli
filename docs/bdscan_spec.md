@@ -21,7 +21,7 @@ graph TD
     DbSearch -->|Finalize Append/De-dup| SourceTables[8 Source Tables]
 
     DbSearchLogs -->|4. Curate| Curator[Curator Agent]
-    Curator -->|Updates ##database-search| GlobalLearning[learning.md in Root]
+    Curator -->|Updates ##database-search| GlobalLearning[learning.md in src/agents/]
 
     SourceTables -->|5. Run Script| Compiler[Landscape Table Compiler]
     Compiler -->|Combines into| BigTable[Big Table in research/]
@@ -62,7 +62,7 @@ graph TD
   - **Turn 3:** Runs secondary/refined queries for assets found in other sources or synonyms that returned sparse data.
   - **Turn 4:** Merges, reformats, and compiles raw results.
 - **Hallucination Prevention:** The final search logs of each source are saved to raw research files. The data mapping is compiled using a deterministic **append / de-duplicate utility script** (no LLM rewriting of trial data) to ensure 100% data integrity.
-- **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## database-search`.
+- **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` (located at `src/agents/learning.md`) under the section `## database-search`.
   COMMENT: this seems too structured... for example, why wouldn't turn 2 just look at the results and generate new terms and perform the search? Turn 4 could do the same but just need to call finalize at the end.
   COMMENT: all the tools in util/ will need to be refactored into tools that agents can call
 
@@ -89,7 +89,7 @@ graph TD
   - Originator, licensing partner, and developer details.
   - Development status: Validate if the asset is still active, on hold, or discontinued (e.g. checking recent financial/pipeline updates).
   - Exclusivity, selectivity constants, safety profiles, and key clinical milestones.
-- **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` under the section `## web-search`.
+- **Curator Integration:** Execution logs are saved and passed to the `CuratorAgent` to update the global `learning.md` (located at `src/agents/learning.md`) under the section `## web-search`.
   COMMENT: the info from web search should be written in new columns. The existing columns should be immutable to prevent hallucination.
   COMMENT: this needs to be designed such that after each 4-turn agent, the alternative names are searched and the relevant entries are marked, so there's no duplicative search efforts for those rows.
 
@@ -113,7 +113,7 @@ graph TD
 
 - **Mode:** Stage-end curation agent.
 - **Objective:** Aggregates logs from the database search and web search runs to update rules and search lessons.
-- **Difference from Financial CLI:** Instead of local ticker-specific folders, this curator maintains a **single global file** at `f:\AIML projects\biotech-analyst-cli\self-improving\learning.md` in the project root.
+- **Difference from Financial CLI:** Instead of local ticker-specific folders, this curator maintains a **single global file** at `f:\AIML projects\biotech-analyst-cli\src\agents\learning.md` in the agents module directory.
 - **Sections Maintained:** These should be 20 lines max.
   - `## database-search`: Tracks optimal search keyword strategies, translation maps, and database quirks.
   - `## web-search`: Tracks site locations, sponsor registries, pipeline tracking urls, and nomenclature rules.

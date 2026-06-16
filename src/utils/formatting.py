@@ -5,7 +5,7 @@ from rich.panel import Panel
 
 console = Console()
 
-RABBIT_ART = "  (\\_/)\n" "  (o-o)   <-- Dr. Hops 👓\n" " c( 🔬)o"
+RABBIT_ART = "  (\\_/)\n  (o-o)   <-- Dr. Hops 👓\n c( 🔬)o"
 
 BIOTECH_INTERJECTIONS = [
     "By my ribosomes!",

@@ -101,11 +101,10 @@ TEST_SUITE = [
         "json_assertions": [
             lambda data: data.get("drug_name") == "Aspirin",
             lambda data: "label" in data and "events" in data,
-            lambda data: data["label"]
-            .get("openfda", {})
-            .get("generic_name", [""])[0]
-            .upper()
-            == "ASPIRIN",
+            lambda data: (
+                data["label"].get("openfda", {}).get("generic_name", [""])[0].upper()
+                == "ASPIRIN"
+            ),
         ],
         "txt_assertions": [
             "OPENFDA DRUG SAFETY & LABEL SUMMARY REPORT",
@@ -171,8 +170,9 @@ TEST_SUITE = [
         "json_assertions": [
             lambda data: isinstance(data.get("results"), list),
             lambda data: len(data["results"]) == 120,
-            lambda data: "abstractText" in data["results"][0]
-            or "title" in data["results"][0],
+            lambda data: (
+                "abstractText" in data["results"][0] or "title" in data["results"][0]
+            ),
         ],
         "txt_assertions": [
             "MAJOR CONFERENCE ABSTRACTS & PRESENTATIONS REPORT",
@@ -267,8 +267,9 @@ TEST_SUITE = [
         "json_assertions": [
             lambda data: isinstance(data.get("results"), list),
             lambda data: len(data["results"]) > 0,
-            lambda data: "abstractText" in data["results"][0]
-            or "title" in data["results"][0],
+            lambda data: (
+                "abstractText" in data["results"][0] or "title" in data["results"][0]
+            ),
         ],
         "txt_assertions": [
             "GLOBAL PATENT & INTELLECTUAL PROPERTY (IP) REPORT",

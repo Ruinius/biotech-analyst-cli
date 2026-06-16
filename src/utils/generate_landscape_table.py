@@ -1398,9 +1398,12 @@ def main():
         # Sort trials by active/completed first
         ct_sorted = sorted(
             matched_ct,
-            key=lambda x: 0
-            if x["status"].upper() in CT_ACTIVE or x["status"].upper() in CT_COMPLETED
-            else 1,
+            key=lambda x: (
+                0
+                if x["status"].upper() in CT_ACTIVE
+                or x["status"].upper() in CT_COMPLETED
+                else 1
+            ),
         )
         for ct in ct_sorted:
             trial_links.append(

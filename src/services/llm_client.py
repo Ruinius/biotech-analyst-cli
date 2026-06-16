@@ -25,23 +25,19 @@ class LLMClient:
         if not api_key:
             return "Error: No API key configured. Please run 'ba config' first."
 
-        # Let's support Gemini direct or fallback to OpenRouter
+        # Let's support Gemini direct, OpenRouter, or DeepSeek
         if self.settings.gemini_api_key:
             return self._call_gemini(prompt, system_instruction)
         elif self.settings.openrouter_api_key:
             return self._call_openrouter(prompt, system_instruction)
+        elif self.settings.deepseek_api_key:
+            return self._call_deepseek(prompt, system_instruction)
         else:
             return "Error: Selected API provider key not configured."
 
     def _call_gemini(self, prompt: str, system_instruction: str | None = None) -> str:
         """Invoke Gemini API directly using HTTP POST."""
         api_key = self.settings.gemini_api_key
-        url = f"https://generativelink.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-
-        # Fallback to standard Gemini API endpoint if needed
-        # Or just use the standard endpoint:
-        url = f"https://generativelithium.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        # Wait, the correct standard public endpoint is:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
 
         contents = [{"parts": [{"text": prompt}]}]
@@ -94,3 +90,30 @@ class LLMClient:
                 return text
         except Exception as e:
             return f"Failed to call OpenRouter API: {str(e)}"
+
+    def _call_deepseek(self, prompt: str, system_instruction: str | None = None) -> str:
+        """Invoke DeepSeek API."""
+        api_key = self.settings.deepseek_api_key
+        url = "https://api.deepseek.com/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {"model": "deepseek-chat", "messages": messages}
+
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(url, headers=headers, json=payload)
+                if response.status_code != 200:
+                    return f"API Error (HTTP {response.status_code}): {response.text}"
+
+                res_data = response.json()
+                text = res_data["choices"][0]["message"]["content"]
+                return text
+        except Exception as e:
+            return f"Failed to call DeepSeek API: {str(e)}"
