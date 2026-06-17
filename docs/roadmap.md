@@ -96,6 +96,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] **LLM Settings Dynamic Control (`ba config llm`):** Implement subcommand to switch LLM provider and model, dynamically prompting for missing keys while maintaining non-interactive argument usage.
 
 ---
+
 ## Phase 9: Broad Scan Pipeline Refactoring
 
 - [x] **Landscape Monolith Decomposition:** Deconstruct `generate_landscape_table.py` monolith into modular submodules under `src/utils/landscape/` (`table_formatters.py`, `config_builder.py`, `table_builder.py`, `exporters.py`), and migrate LLM classifier to `src/tools/classify_interventions.py`.
@@ -107,6 +108,6 @@ This document lays out the milestones and tasks to implement the new agentic arc
 
 ## Next Steps
 
-- [ ] Run full end-to-end regression testing on a broad scan pathway (e.g. `CLDN18.2`) to compare pre- and post-refactor table formats and ensure 100% equivalence.
+- [x] It looks like all the json files and database search outputs are still being dumped in the tmp folder instead of the actual scan folder.
 - [ ] Complete manual developer testing of the concurrent database searches and lock-protected asset research.
 - [ ] Delete the temporary refactoring specification file `docs/bdscan_refactor.md`.

@@ -52,6 +52,7 @@ def run_deepdive_pipeline(
             target_dir.mkdir(parents=True, exist_ok=True)
             (target_dir / "research").mkdir(exist_ok=True)
             (target_dir / "final_output").mkdir(exist_ok=True)
+            (target_dir / "database_json").mkdir(exist_ok=True)
 
             # Write a default context.md layman overview template
             context_path = target_dir / "context.md"
@@ -69,7 +70,7 @@ def run_deepdive_pipeline(
             formatting.print_error(f"Failed to initialize directories: {e}")
             raise RuntimeError(f"Failed to initialize directories: {e}")
 
-        os.makedirs("tmp", exist_ok=True)
+        db_json_dir = target_dir / "database_json"
 
         # --- Run fetches and summaries ---
         formatting.speak(
@@ -77,7 +78,7 @@ def run_deepdive_pipeline(
         )
 
         # 1. ClinicalTrials.gov by NCT or term
-        ct_file = f"tmp/{folder_safe_name}_ct.json"
+        ct_file = str(db_json_dir / f"{folder_safe_name}_ct.json")
         if trial_id.strip().upper().startswith("NCT"):
             run_pipeline_step(
                 [
@@ -115,7 +116,7 @@ def run_deepdive_pipeline(
             )
 
         # 2. openFDA Labels
-        fda_file = f"tmp/{folder_safe_name}_openfda.json"
+        fda_file = str(db_json_dir / f"{folder_safe_name}_openfda.json")
         run_pipeline_step(
             ["src/tools/fetch_openfda.py", "--drug", asset_name, "--output", fda_file],
             f"openFDA label check for '{asset_name}'",
@@ -133,7 +134,7 @@ def run_deepdive_pipeline(
             )
 
         # 3. PubChem BioAssay
-        pubchem_file = f"tmp/{folder_safe_name}_pubchem.json"
+        pubchem_file = str(db_json_dir / f"{folder_safe_name}_pubchem.json")
         run_pipeline_step(
             [
                 "src/tools/fetch_pubchem.py",
@@ -160,7 +161,7 @@ def run_deepdive_pipeline(
         import glob
 
         research_dir = target_dir / "research"
-        for sum_file in glob.glob(f"tmp/{folder_safe_name}_*_sum.txt"):
+        for sum_file in glob.glob(str(db_json_dir / f"{folder_safe_name}_*_sum.txt")):
             try:
                 dest = (
                     research_dir / f"{Path(sum_file).name.replace('_sum.txt', '.md')}"

@@ -29,38 +29,29 @@ def compile_landscape_table(
     master_table_out.parent.mkdir(parents=True, exist_ok=True)
 
     # -----------------------------------------------------------------------
-    # Resolve input paths — prefer database_json/ (§1+), fall back to tmp/ (§3)
+    # Resolve input paths — strictly from database_json/ directory
     # -----------------------------------------------------------------------
     database_json_dir = target_dir / "database_json"
+    if not database_json_dir.exists():
+        raise FileNotFoundError(
+            f"Database JSON directory not found: {database_json_dir}"
+        )
 
-    def _resolve(db_json_pattern: str, tmp_pattern: str) -> str | None:
-        """Return the first matching file in database_json/ then tmp/."""
-        import glob as _glob
-
-        db_matches = _glob.glob(str(database_json_dir / db_json_pattern))
-        if db_matches:
-            return db_matches[0]
-        tmp_matches = _glob.glob(tmp_pattern)
-        return tmp_matches[0] if tmp_matches else None
-
-    merged_ct_file = _resolve(
-        f"{folder_safe_name}_clinicaltrials.json",
-        f"tmp/{folder_safe_name}_clinicaltrials.json",
+    merged_ct_file = os.path.join(
+        str(database_json_dir), f"{folder_safe_name}_clinicaltrials.json"
     )
-    merged_china_file = _resolve(
-        f"{folder_safe_name}_china_direct.json",
-        f"tmp/{folder_safe_name}_china_direct.json",
+    merged_china_file = os.path.join(
+        str(database_json_dir), f"{folder_safe_name}_china_direct.json"
     )
 
-    # Also check for plain tmp/ fallback paths (§3 backward-compat)
-    if not merged_ct_file and os.path.exists(
-        f"tmp/{folder_safe_name}_clinicaltrials.json"
-    ):
-        merged_ct_file = f"tmp/{folder_safe_name}_clinicaltrials.json"
-    if not merged_china_file and os.path.exists(
-        f"tmp/{folder_safe_name}_china_direct.json"
-    ):
-        merged_china_file = f"tmp/{folder_safe_name}_china_direct.json"
+    if not os.path.exists(merged_ct_file):
+        raise FileNotFoundError(
+            f"Merged ClinicalTrials JSON not found: {merged_ct_file}"
+        )
+    if not os.path.exists(merged_china_file):
+        raise FileNotFoundError(
+            f"Merged China Direct JSON not found: {merged_china_file}"
+        )
 
     temp_table_out = target_dir / "research" / "_initial_landscape_base.md"
 

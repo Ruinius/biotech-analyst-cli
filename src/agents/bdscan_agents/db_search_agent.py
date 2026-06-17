@@ -42,6 +42,8 @@ def _copy_to_db_json(tmp_path: str, db_json_dir: str | None) -> None:
     if db_json_dir and os.path.exists(tmp_path):
         os.makedirs(db_json_dir, exist_ok=True)
         dest = os.path.join(db_json_dir, os.path.basename(tmp_path))
+        if os.path.abspath(tmp_path) == os.path.abspath(dest):
+            return
         try:
             shutil.copy2(tmp_path, dest)
         except Exception as e:
@@ -51,8 +53,11 @@ def _copy_to_db_json(tmp_path: str, db_json_dir: str | None) -> None:
 def search_clinicaltrials(
     folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_ct_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(db_json_dir, f"{folder_safe_name}_ct_{term_clean}.json")
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -95,8 +100,11 @@ def search_clinicaltrials(
 def search_anzctr_ctis(
     folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_anzctr_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(db_json_dir, f"{folder_safe_name}_anzctr_{term_clean}.json")
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -137,8 +145,11 @@ def search_anzctr_ctis(
 def search_conferences(
     folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_conf_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(db_json_dir, f"{folder_safe_name}_conf_{term_clean}.json")
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -181,8 +192,11 @@ def search_conferences(
 def search_chinese_registries(
     folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_chreg_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(db_json_dir, f"{folder_safe_name}_chreg_{term_clean}.json")
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -225,8 +239,13 @@ def search_chinese_registries(
 def search_china_direct(
     folder_safe_name: str, term: str, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_cdirect_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(
+        db_json_dir, f"{folder_safe_name}_cdirect_{term_clean}.json"
+    )
     sum_file = out_file.replace(".json", "_sum.txt")
 
     # Direct search on NMPA CDE (requires chromium playwright installed)
@@ -260,8 +279,11 @@ def search_china_direct(
 def search_ip_lens(
     folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_lens_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(db_json_dir, f"{folder_safe_name}_lens_{term_clean}.json")
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -296,8 +318,13 @@ def search_ip_lens(
 def search_pubchem(
     folder_safe_name: str, term: str, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_pubchem_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(
+        db_json_dir, f"{folder_safe_name}_pubchem_{term_clean}.json"
+    )
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -324,8 +351,13 @@ def search_pubchem(
 def search_openfda(
     folder_safe_name: str, term: str, db_json_dir: str | None = None
 ) -> str:
+    if not db_json_dir:
+        raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
     term_clean = term.replace(" ", "_").replace(".", "")
-    out_file = f"tmp/{folder_safe_name}_openfda_{term_clean}.json"
+    os.makedirs(db_json_dir, exist_ok=True)
+    out_file = os.path.join(
+        db_json_dir, f"{folder_safe_name}_openfda_{term_clean}.json"
+    )
     sum_file = out_file.replace(".json", "_sum.txt")
 
     success, out, err = run_cmd(
@@ -525,30 +557,57 @@ class DatabaseSearchAgent:
                 # Run tool
                 if called_tool == "search_clinicaltrials":
                     result = search_clinicaltrials(
-                        self.folder_safe_name, term_to_search, limit
+                        self.folder_safe_name,
+                        term_to_search,
+                        limit,
+                        db_json_dir=self._db_json_dir,
                     )
                 elif called_tool == "search_anzctr_ctis":
                     result = search_anzctr_ctis(
-                        self.folder_safe_name, term_to_search, limit
+                        self.folder_safe_name,
+                        term_to_search,
+                        limit,
+                        db_json_dir=self._db_json_dir,
                     )
                 elif called_tool == "search_conferences":
                     result = search_conferences(
-                        self.folder_safe_name, term_to_search, limit
+                        self.folder_safe_name,
+                        term_to_search,
+                        limit,
+                        db_json_dir=self._db_json_dir,
                     )
                 elif called_tool == "search_chinese_registries":
                     result = search_chinese_registries(
-                        self.folder_safe_name, term_to_search, limit
+                        self.folder_safe_name,
+                        term_to_search,
+                        limit,
+                        db_json_dir=self._db_json_dir,
                     )
                 elif called_tool == "search_china_direct":
-                    result = search_china_direct(self.folder_safe_name, term_to_search)
+                    result = search_china_direct(
+                        self.folder_safe_name,
+                        term_to_search,
+                        db_json_dir=self._db_json_dir,
+                    )
                 elif called_tool == "search_ip_lens":
                     result = search_ip_lens(
-                        self.folder_safe_name, term_to_search, limit
+                        self.folder_safe_name,
+                        term_to_search,
+                        limit,
+                        db_json_dir=self._db_json_dir,
                     )
                 elif called_tool == "search_pubchem":
-                    result = search_pubchem(self.folder_safe_name, term_to_search)
+                    result = search_pubchem(
+                        self.folder_safe_name,
+                        term_to_search,
+                        db_json_dir=self._db_json_dir,
+                    )
                 elif called_tool == "search_openfda":
-                    result = search_openfda(self.folder_safe_name, term_to_search)
+                    result = search_openfda(
+                        self.folder_safe_name,
+                        term_to_search,
+                        db_json_dir=self._db_json_dir,
+                    )
                 else:
                     result = f"Error: Tool '{called_tool}' is not recognized."
 
@@ -593,13 +652,24 @@ class DatabaseSearchAgent:
             "Ribosomes active! Commencing deterministic append/de-duplicate merging schedules..."
         )
 
-        merged_ct_file = f"tmp/{self.folder_safe_name}_clinicaltrials.json"
-        merged_china_file = f"tmp/{self.folder_safe_name}_china_direct.json"
+        if not self._db_json_dir:
+            raise ValueError(
+                "self._db_json_dir is required; fallback to tmp/ has been removed."
+            )
+        parent_dir = self._db_json_dir
+        merged_ct_file = os.path.join(
+            parent_dir, f"{self.folder_safe_name}_clinicaltrials.json"
+        )
+        merged_china_file = os.path.join(
+            parent_dir, f"{self.folder_safe_name}_china_direct.json"
+        )
 
         # 1. Merge Clinical Trials (ClinicalTrials.gov + ANZCTR/CTIS)
         merged_trials = {}
         # ClinicalTrials
-        for f_path in glob.glob(f"tmp/{self.folder_safe_name}_ct_*.json"):
+        for f_path in glob.glob(
+            os.path.join(parent_dir, f"{self.folder_safe_name}_ct_*.json")
+        ):
             try:
                 with open(f_path, encoding="utf-8") as f:
                     data = json.load(f)
@@ -610,7 +680,9 @@ class DatabaseSearchAgent:
                 pass
 
         # ANZCTR / CTIS
-        for f_path in glob.glob(f"tmp/{self.folder_safe_name}_anzctr_*.json"):
+        for f_path in glob.glob(
+            os.path.join(parent_dir, f"{self.folder_safe_name}_anzctr_*.json")
+        ):
             try:
                 with open(f_path, encoding="utf-8") as f:
                     data = json.load(f)
@@ -685,7 +757,9 @@ class DatabaseSearchAgent:
 
         # 2. Merge China Direct CDE Scrapes
         merged_china = []
-        for f_path in glob.glob(f"tmp/{self.folder_safe_name}_cdirect_*.json"):
+        for f_path in glob.glob(
+            os.path.join(parent_dir, f"{self.folder_safe_name}_cdirect_*.json")
+        ):
             try:
                 with open(f_path, encoding="utf-8") as f:
                     data = json.load(f)

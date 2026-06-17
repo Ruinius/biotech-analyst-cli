@@ -277,27 +277,10 @@ def discover_config(
     # 3. Collect candidate codes from conference abstract files
     # -----------------------------------------------------------------------
     conf_codes: list = []
-    search_dirs = []
     if database_json_dir and os.path.exists(database_json_dir):
-        search_dirs.append(database_json_dir)
-    # Legacy fallback: tmp/ directories
-    search_dirs += [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tmp"),
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "tmp"
-        ),
-        os.path.join(os.getcwd(), "tmp"),
-    ]
-
-    seen_conf_paths: set = set()
-    for s_dir in search_dirs:
-        if not os.path.exists(s_dir):
-            continue
-        for filepath in glob.glob(os.path.join(s_dir, "*conferences*.json")):
-            abs_path = os.path.abspath(filepath)
-            if abs_path in seen_conf_paths:
-                continue
-            seen_conf_paths.add(abs_path)
+        for filepath in glob.glob(
+            os.path.join(database_json_dir, "*conferences*.json")
+        ):
             try:
                 with open(filepath, encoding="utf-8") as f:
                     conf_data = json.load(f)

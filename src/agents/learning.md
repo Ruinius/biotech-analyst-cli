@@ -3,18 +3,21 @@
 This file contains accumulated learnings, heuristics, and constraints gathered by the Biotech Analyst CLI agents during execution.
 
 ## database-search
-- For protein targets (e.g., Claudin 18.2), avoid PubChem compound search; it returns 404 because the tool indexes small molecules, not proteins.
-- Use both English synonyms (with/without space) and official gene symbols (e.g., “CLDN18.2”) to maximize coverage; direct Chinese translations (e.g., “克劳丁18.2”) may consistently fail or return no results in some Chinese databases.
-- When a search tool for clinical trial registries (e.g., EU CTIS, ANZCTR, Chinese WHO) consistently returns literature (PubMed/Medline) instead of trial records, verify the data source; this indicates a tool integration issue, and further synonym searches are unlikely to fix it.
-- For FDA regulatory data (openFDA), protein targets yield no records; search by drug product names (e.g., “zolbetuximab”) instead of target synonyms.
-- NMPA CDE (Chinese regulator) successfully returns IND records using English synonyms, especially official gene symbols (e.g., “CLDN18.2” yields more results than “Claudin 18.2”); the Chinese synonym consistently fails.
-- Conference databases (e.g., ASCO, AACR) effectively return relevant abstracts, and using multiple English synonyms (e.g., 'Claudin 18.2', 'CLDN18.2', 'Claudin18.2') can provide comprehensive coverage, even if full abstract text is not always accessible via the tool.
-- ClinicalTrials.gov consistently returns a high number of trials (e.g., up to 50) per synonym; common English synonym variations often yield highly overlapping results, suggesting a single comprehensive search may be sufficient.
-- API errors (HTTP 400/404) may indicate tool limitations (e.g., invalid API key, unsupported entity type); document the error and do not retry the same term.
-- For Chinese registries (ChiCTR), a direct web portal search is often recommended over generic synonyms via tools, as they may not index trial records reliably.
-- After exhausting all relevant synonyms, if a database still yields incorrect data types or explicit 'no results' errors, mark the search as complete for that database via the current tool/method.
-- For patent databases (e.g., Lens.org), subtle synonym variations (e.g., 'Claudin18.2' vs 'Claudin 18.2') can significantly impact results, even leading to zero results for common terms.
-- Patent databases may require more specific keyword combinations or have limited coverage for certain targets or jurisdictions compared to clinical/literature databases.
+- Avoid PubChem for protein targets; it indexes small molecules and will return 404 errors or irrelevant records.
+- Use English official gene symbols (e.g., “CLDN18.2”) over descriptive synonyms or direct Chinese translations to maximize coverage in technical databases.
+- If clinical registries (EU CTIS, ANZCTR) return literature citations instead of raw trial records, it indicates a tool-specific indexing behavior rather than a synonym error.
+- For FDA regulatory data (openFDA), search by specific drug product names (e.g., “zolbetuximab”) rather than protein target synonyms to find relevant records.
+- NMPA CDE (China) effectively returns IND records using official gene symbols (e.g., “CLDN18.2”), while descriptive English and Chinese synonyms often fail.
+- Conference databases are the primary source for tracking emerging modality shifts (e.g., CAR-T, bispecifics) and pathological insights like expression heterogeneity.
+- ClinicalTrials.gov synonyms often yield highly overlapping results; a single search with the most common synonym is usually sufficient to capture relevant trials.
+- Patent databases (e.g., Lens.org) are extremely sensitive to string formatting; removing spaces (e.g., "Claudin18.2") may yield results where spaced terms fail entirely.
+- To overcome low sensitivity in patent registries, broaden searches from specific isoforms (e.g., "CLDN18.2") to the parent protein name (e.g., "Claudin 18").
+- Do not retry searches for terms that trigger API errors (HTTP 400/404); these indicate fundamental tool or entity type limitations.
+- Use EU CTIS and ANZCTR to identify regional combinations and registry-based diagnostic profiles (e.g., SAPHIR) not always listed on ClinicalTrials.gov.
+- Access Chinese registries like ChiCTR via direct web portals as they may not index trial records reliably via generic aggregate search tools.
+- If high-profile clinical targets yield zero patent hits, verify if records are filed under broader classification terms or specific preparation methods (e.g., "recombinant vaccine").
+- Subtle synonym variations in patent databases can lead to zero-result failures, necessitating the testing of both spaced and concatenated alphanumeric strings.
+- Mark a database search as complete only after attempting both official gene symbols and common English synonym variations.
 
 ## web-search
 - API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
