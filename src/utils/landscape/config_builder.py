@@ -335,6 +335,38 @@ def discover_config(
             except Exception as e:
                 print(f"Warning: Failed to process conference file {filepath}: {e}")
 
+    # Load global master_config.json if it exists
+    master_config = {}
+    master_lookup = {}
+    try:
+        from src.core.config import load_config
+
+        settings = load_config()
+        if settings and settings.base_folder:
+            from pathlib import Path
+
+            master_path = Path(settings.expanded_base_folder) / "master_config.json"
+            if master_path.exists():
+                with open(master_path, encoding="utf-8") as f:
+                    master_config = json.load(f)
+                print(
+                    f"[config_builder] Loaded master_config.json with {len(master_config)} entries from {master_path}"
+                )
+                # Build lowercase alias mapping
+                for canon, details in master_config.items():
+                    aliases = details.get("aliases", [])
+                    entry = {
+                        "canonical_name": canon,
+                        "aliases": aliases,
+                        "modality": details.get("modality", "N/A"),
+                        "targets": details.get("targets", []),
+                    }
+                    master_lookup[canon.lower()] = entry
+                    for alias in aliases:
+                        master_lookup[alias.lower()] = entry
+    except Exception as e:
+        print(f"[config_builder] Note: Could not load global master_config.json: {e}")
+
     # Run the programmatic DSU clustering
     groups = cluster_synonym_groups(synonym_sets)
 
@@ -343,35 +375,73 @@ def discover_config(
     # -----------------------------------------------------------------------
     candidate_map = {}  # candidate_name_lower -> group_set
     candidate_list = []
+    pre_classified_assets = []
+
     for g in groups:
-        sorted_names = sorted(g, key=_name_priority)
-        primary = sorted_names[0]
-        candidate_list.append(primary)
-        candidate_map[primary.lower()] = g
-        for alias in sorted_names[1:]:
-            candidate_map[alias.lower()] = g
+        # Check if any name in group g is in master_config
+        matched_entry = None
+        for name in g:
+            if name.lower() in master_lookup:
+                matched_entry = master_lookup[name.lower()]
+                break
 
-    if not candidate_list:
-        print("No candidate intervention names found after cleansing.")
-        return {}
+        if matched_entry:
+            # Found in master_config! Pre-classify this group
+            canon = matched_entry["canonical_name"]
+            # Merge all aliases from both the programmatic group and the master_config
+            merged_aliases = set(g)
+            merged_aliases.update(matched_entry.get("aliases", []))
+            if canon in merged_aliases:
+                merged_aliases.remove(canon)
+
+            # Save pre-classified entry
+            pre_classified_assets.append(
+                {
+                    "canonical_name": canon,
+                    "aliases": list(merged_aliases),
+                    "modality": matched_entry.get("modality", "N/A"),
+                    "targets": matched_entry.get("targets", []),
+                }
+            )
+            # Map all names in the group to this canonical name
+            for name in g:
+                candidate_map[name.lower()] = g
+            # Also register the canonical name under candidate_map
+            candidate_map[canon.lower()] = g
+            print(
+                f"[config_builder] Pre-classified asset '{canon}' using master_config (bypassing LLM)"
+            )
+        else:
+            # Not found in master_config, send to LLM
+            sorted_names = sorted(g, key=_name_priority)
+            primary = sorted_names[0]
+            candidate_list.append(primary)
+            candidate_map[primary.lower()] = g
+            for alias in sorted_names[1:]:
+                candidate_map[alias.lower()] = g
+
+    classified_assets = []
+    if candidate_list:
+        print(
+            f"[config_builder] Querying LLM to classify {len(candidate_list)} candidate assets..."
+        )
+        classified_assets = classify_interventions(
+            candidate_list, target_name, target_synonyms
+        )
+
+    # Combine pre-classified assets and LLM-classified assets
+    all_classified = pre_classified_assets + classified_assets
 
     print(
-        f"[config_builder] Querying LLM to classify {len(candidate_list)} candidate assets..."
-    )
-    classified_assets = classify_interventions(
-        candidate_list, target_name, target_synonyms
-    )
-
-    print(
-        f"\nClassification complete: {len(classified_assets)} pipeline asset(s) "
-        f"identified from {len(candidate_list)} pre-cleansed candidate(s)."
+        f"\nClassification complete: {len(all_classified)} pipeline asset(s) "
+        f"identified (LLM classified: {len(classified_assets)}, pre-classified: {len(pre_classified_assets)})."
     )
 
     # -----------------------------------------------------------------------
     # 3. Build final config mapping canonical name -> aliases
     # -----------------------------------------------------------------------
     config: dict = {}
-    for entry in classified_assets:
+    for entry in all_classified:
         canon = entry["canonical_name"]
         aliases = set(entry.get("aliases", []))
 

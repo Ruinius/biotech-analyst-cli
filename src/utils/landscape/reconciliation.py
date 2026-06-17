@@ -416,49 +416,122 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
             if cleaned_others:
                 synonym_sets.append(set(cleaned_others))
 
+    # Load global master_config.json if it exists
+    master_config = {}
+    master_lookup = {}
+    try:
+        from src.core.config import load_config
+
+        settings = load_config()
+        if settings and settings.base_folder:
+            master_path = Path(settings.expanded_base_folder) / "master_config.json"
+            if master_path.exists():
+                with open(master_path, encoding="utf-8") as f:
+                    master_config = json.load(f)
+                print(
+                    f"[Reconciliation] Loaded master_config.json with {len(master_config)} entries from {master_path}"
+                )
+                # Build lowercase alias mapping
+                for canon, details in master_config.items():
+                    aliases = details.get("aliases", [])
+                    entry = {
+                        "canonical_name": canon,
+                        "aliases": aliases,
+                        "modality": details.get("modality", "N/A"),
+                        "targets": details.get("targets", []),
+                    }
+                    master_lookup[canon.lower()] = entry
+                    for alias in aliases:
+                        master_lookup[alias.lower()] = entry
+    except Exception as e:
+        print(f"[Reconciliation] Note: Could not load global master_config.json: {e}")
+
     # Run the programmatic DSU clustering
     groups = cluster_synonym_groups(synonym_sets)
 
     # -----------------------------------------------------------------------
-    # Step 3: LLM-based classification of candidate canonical assets
+    # Step 3: Check master_config and LLM-based classification of candidate canonical assets
     # -----------------------------------------------------------------------
     candidate_map = {}  # name_lower -> group_set
     candidate_list = []
+    pre_classified_assets = []
+
     for g in groups:
-        sorted_names = sorted(g, key=_name_priority)
-        primary = sorted_names[0]
-        candidate_list.append(primary)
-        candidate_map[primary.lower()] = g
-        for alias in sorted_names[1:]:
-            candidate_map[alias.lower()] = g
+        # Check if any name in group g is in master_config
+        matched_entry = None
+        for name in g:
+            if name.lower() in master_lookup:
+                matched_entry = master_lookup[name.lower()]
+                break
 
-    if not candidate_list:
-        print("[Reconciliation] No candidate drug names found after pre-filtering.")
+        if matched_entry:
+            # Found in master_config! Pre-classify this group
+            canon = matched_entry["canonical_name"]
+            # Merge all aliases from both the programmatic group and the master_config
+            merged_aliases = set(g)
+            merged_aliases.update(matched_entry.get("aliases", []))
+            if canon in merged_aliases:
+                merged_aliases.remove(canon)
+
+            # Save pre-classified entry
+            pre_classified_assets.append(
+                {
+                    "canonical_name": canon,
+                    "aliases": list(merged_aliases),
+                    "modality": matched_entry.get("modality", "N/A"),
+                    "targets": matched_entry.get("targets", []),
+                }
+            )
+            # Map all names in the group to this canonical name
+            for name in g:
+                candidate_map[name.lower()] = g
+            # Also register the canonical name under candidate_map
+            candidate_map[canon.lower()] = g
+            print(
+                f"[Reconciliation] Pre-classified asset '{canon}' using master_config (bypassing LLM)"
+            )
+        else:
+            # Not found in master_config, send to LLM
+            sorted_names = sorted(g, key=_name_priority)
+            primary = sorted_names[0]
+            candidate_list.append(primary)
+            candidate_map[primary.lower()] = g
+            for alias in sorted_names[1:]:
+                candidate_map[alias.lower()] = g
+
+    classified_assets = []
+    if candidate_list:
+        try:
+            print(
+                f"[Reconciliation] Querying LLM to classify {len(candidate_list)} candidate assets..."
+            )
+            classified_assets = classify_interventions(
+                names=candidate_list,
+                target_name=target_name,
+            )
+        except RuntimeError as e:
+            print(f"[Reconciliation] LLM classification failed: {e}")
+            if not pre_classified_assets:
+                print("[Reconciliation] Writing empty reconciliation artifacts.")
+                reconciled_path.write_text(
+                    json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                log_path.write_text(
+                    json.dumps({"error": str(e)}, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                return
+
+    # Combine pre-classified assets and LLM-classified assets
+    all_classified = pre_classified_assets + classified_assets
+
+    if not all_classified:
+        print("[Reconciliation] No candidate drug names classified as assets.")
         reconciled_path.write_text(
             json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8"
         )
         log_path.write_text(
-            json.dumps({"info": "No candidates"}, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        return
-
-    try:
-        print(
-            f"[Reconciliation] Querying LLM to classify {len(candidate_list)} candidate assets..."
-        )
-        classified_assets = classify_interventions(
-            names=candidate_list,
-            target_name=target_name,
-        )
-    except RuntimeError as e:
-        print(f"[Reconciliation] LLM classification failed: {e}")
-        print("[Reconciliation] Writing empty reconciliation artifacts.")
-        reconciled_path.write_text(
-            json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        log_path.write_text(
-            json.dumps({"error": str(e)}, indent=2, ensure_ascii=False),
+            json.dumps({"info": "No classified assets"}, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         return
@@ -469,7 +542,7 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
     canonical_map: dict[str, str] = {}  # any_name_lower → canonical
     reconciled: dict = {}
 
-    for entry in classified_assets:
+    for entry in all_classified:
         canon = entry["canonical_name"]
         aliases = set(entry.get("aliases", []))
 
@@ -607,7 +680,7 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
         "background_terms": background_log,
         "source_files": source_file_map,
         "total_records_processed": len(all_asset_records),
-        "classified_assets_count": len(classified_assets),
+        "classified_assets_count": len(all_classified),
         "background_count": len(background_log),
     }
     log_path.write_text(

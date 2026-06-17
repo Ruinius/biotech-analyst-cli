@@ -413,3 +413,72 @@ def test_reconcile_llm_failure_writes_empty(mock_classify):
         assert reconciled_path.exists()
         content = json.loads(reconciled_path.read_text(encoding="utf-8"))
         assert content == {}
+
+
+@patch("src.core.config.load_config")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
+def test_reconcile_with_master_config_bypass(mock_classify, mock_load_config):
+    """reconcile_all_sources should load master_config.json and bypass LLM classification for matching synonyms."""
+    mock_classify.return_value = []
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+        db_dir = tmp_path / "database_json"
+        db_dir.mkdir()
+
+        # Set up mock load_config
+        from src.core.config import Settings
+
+        mock_settings = Settings(
+            full_name="Test User", email="test@test.com", base_folder=str(tmpdir)
+        )
+        mock_load_config.return_value = mock_settings
+
+        # Write master_config.json
+        master_config = {
+            "Zolbetuximab": {
+                "aliases": ["Vyloy", "IMAB362"],
+                "modality": "Monoclonal Antibody",
+                "targets": ["CLDN18.2"],
+            }
+        }
+        with open(tmp_path / "master_config.json", "w", encoding="utf-8") as f:
+            json.dump(master_config, f)
+
+        # Write source trial file
+        folder_safe_name = "CLDN18_2_Scan"
+        trial_data = {
+            "NCT03504397": {
+                "protocolSection": {
+                    "statusModule": {"overallStatus": "COMPLETED"},
+                    "designModule": {"phases": ["PHASE3"]},
+                    "armsInterventionsModule": {
+                        "interventions": [
+                            {
+                                "type": "BIOLOGICAL",
+                                "name": "Vyloy",
+                                "otherNames": [],
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        with open(
+            db_dir / f"{folder_safe_name}_clinicaltrials.json", "w", encoding="utf-8"
+        ) as f:
+            json.dump(trial_data, f)
+
+        # Execute reconciliation
+        reconcile_all_sources(tmp_path, folder_safe_name)
+
+        # Assertions
+        mock_classify.assert_not_called()
+
+        reconciled_path = db_dir / "reconciled.json"
+        assert reconciled_path.exists()
+        reconciled = json.loads(reconciled_path.read_text(encoding="utf-8"))
+
+        assert "Zolbetuximab" in reconciled
+        assert reconciled["Zolbetuximab"]["modality"] == "Monoclonal Antibody"
+        assert "Vyloy" in reconciled["Zolbetuximab"]["aliases"]

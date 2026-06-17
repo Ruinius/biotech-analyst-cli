@@ -560,6 +560,86 @@ def main():
         print(
             "  The synthesized report is verified and free of hallucinations, omissions, and mismatches."
         )
+
+        # Update global master_config.json upon success
+        try:
+            from src.core.config import load_config
+
+            settings = load_config()
+            if settings and settings.base_folder:
+                master_path = os.path.join(
+                    settings.expanded_base_folder, "master_config.json"
+                )
+                master_config = {}
+                if os.path.exists(master_path):
+                    try:
+                        with open(master_path, encoding="utf-8") as f:
+                            master_config = json.load(f)
+                    except Exception as e:
+                        print(
+                            f"  Warning: Failed to load existing master_config.json: {e}"
+                        )
+
+                # Load reconciled.json if available to extract modality/targets
+                reconciled_data = {}
+                db_json_dir = os.path.dirname(args.config) if args.config else None
+                if db_json_dir:
+                    reconciled_path = os.path.join(db_json_dir, "reconciled.json")
+                    if os.path.exists(reconciled_path):
+                        try:
+                            with open(reconciled_path, encoding="utf-8") as f:
+                                reconciled_data = json.load(f)
+                        except Exception:
+                            pass
+
+                # Merge active assets
+                updated_count = 0
+                new_count = 0
+                for canon, details in config.items():
+                    aliases = details.get("aliases", [])
+
+                    # Extract modality/targets from reconciled.json or fallback
+                    reconciled_entry = reconciled_data.get(canon, {})
+                    modality = reconciled_entry.get("modality", "N/A")
+                    targets = reconciled_entry.get("targets", [])
+                    if not targets and "target" in reconciled_entry:
+                        targets = [reconciled_entry["target"]]
+
+                    if canon in master_config:
+                        # Existing canonical asset, merge aliases
+                        master_aliases = set(master_config[canon].get("aliases", []))
+                        old_len = len(master_aliases)
+                        master_aliases.update(aliases)
+                        master_config[canon]["aliases"] = sorted(master_aliases)
+
+                        # Update modality/targets if they are not default
+                        if modality != "N/A":
+                            master_config[canon]["modality"] = modality
+                        if targets:
+                            master_config[canon]["targets"] = sorted(
+                                set(master_config[canon].get("targets", []) + targets)
+                            )
+
+                        if len(master_aliases) > old_len:
+                            updated_count += 1
+                    else:
+                        # New canonical asset
+                        master_config[canon] = {
+                            "aliases": sorted(set(aliases)),
+                            "modality": modality,
+                            "targets": sorted(set(targets)),
+                        }
+                        new_count += 1
+
+                # Save master_config.json
+                with open(master_path, "w", encoding="utf-8") as f:
+                    json.dump(master_config, f, indent=2, ensure_ascii=False)
+                print(
+                    f"  SUCCESS: Merged config to global master_config.json ({new_count} new assets added, {updated_count} existing assets updated)."
+                )
+        except Exception as e:
+            print(f"  Warning: Failed to update global master_config.json: {e}")
+
         sys.exit(0)
 
 

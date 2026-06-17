@@ -3,16 +3,16 @@
 This file contains accumulated learnings, heuristics, and constraints gathered by the Biotech Analyst CLI agents during execution.
 
 ## database-search
-- Use English gene symbols (CLDN18.2), spaced synonyms (Claudin 18.2), and hyphenated variants across all registries; use alphanumeric codes (e.g., IBI343, JS107) as primary identifiers for Chinese ADC and CAR-T programs.
-- In NMPA CDE, use formal Chinese descriptions (紧密连接蛋白) to capture domestic programs from Innovent or CSPC; alphanumeric codes (e.g., JS107, SYSA1801) are the most effective identifiers for high-potency ADCs.
-- Distinguish IHC inclusion thresholds by modality: high expression (≥75%, 2+/3+ intensity) for monoclonal antibodies versus moderate expression (≥40-50%) for potent ADCs and CAR-T therapies.
-- Track CLDN18.2 as part of the standard "Big 5" biomarker panel (alongside HER2, PD-L1, MSI, and EBV) in EU CTIS and SAPHIR registries for patient stratification in gastric cancer.
-- Focus Lens.org searches on parent protein names (Claudin 18) and foundational inventors (Sahin, Türeci); commercial diagnostic clone names like "43-14A" typically yield zero results in IP titles and abstracts.
-- Monitor conference abstracts for resistance mechanisms such as secondary loss of target expression and intrapatient heterogeneity between primary gastric tumors and metastatic sites (e.g., peritoneal or lung).
-- Track target expansion beyond Gastric/GEJ cancer into Pancreatic (PDAC), Biliary Tract (BTC), Colorectal (CRC), Urachal, and Small Bowel Adenocarcinomas.
-- Search openFDA by brand (Vyloy) or generic name (zolbetuximab) to identify labeled toxicities, primarily severe nausea, vomiting, neutropenia, and infusion-related reactions.
-- Monitor NMPA CDE for "immuno-cytotoxic convergence" trends, specifically Phase III registrations of CLDN18.2 ADCs combined with PD-1 inhibitors (e.g., sintilimab, toripalimab) in first-line settings.
-- Use an LLM agent to map combination regimens and trial-specific suffixes (e.g., "IMC002注射液 (...)") to base canonical molecule names to prevent messy trial titles from becoming table rows.
+- Use English gene symbols (CLDN18.2), spaced synonyms (Claudin 18.2), and alphanumeric codes (IBI343, JS107) as primary identifiers; in openFDA, search by brand (Vyloy) or generic (zolbetuximab) only, as gene symbols often yield zero hits in drug label registries.
+- In PubChem, the name-to-CID resolution path fails for biologics; pivot to Protein Accession numbers or Assay IDs (AID) to retrieve bioactivity data for monoclonal antibodies and specific isoforms.
+- Monitor NMPA CDE for "immuno-cytotoxic convergence" trends, specifically Phase III registrations of CLDN18.2 ADCs combined with PD-1 inhibitors (e.g., sintilimab, toripalimab, tislelizumab) in first-line settings.
+- Track CLDN18.2 as part of the standard "Big 5" biomarker panel (alongside HER2, PD-L1, MSI, and EBV) in EU CTIS and SAPHIR registries; note its 2026 inclusion in formal ASCO treatment guidelines.
+- Focus Lens.org searches on parent protein names (Claudin 18) and foundational inventors (Sahin, Türeci); recent filings indicate a 2024 peak in patents for high-potency ADCs and multi-agent combination regimens.
+- Distinguish IHC inclusion thresholds by modality: high expression (≥75%, 2+/3+ intensity) for monoclonal antibodies versus moderate expression (≥40-50%) for potent ADCs and CAR-T therapies leveraging the bystander effect.
+- Monitor conference abstracts for resistance mechanisms such as intrapatient heterogeneity (discrepancy between primary tumors and metastatic sites) and secondary loss of target expression, which necessitates re-biopsy upon progression.
+- Track target expansion beyond Gastric/GEJ into "cold" tumors like Pancreatic (PDAC) and Biliary Tract (BTC), as well as rare indications like Urachal and Small Bowel Adenocarcinoma (e.g., ENVELOPE trial).
+- Use alphanumeric codes (e.g., SYSA1801, SHR-A1904, CT041) to track high-potency programs in Chinese registries, where the market is reaching recruitment saturation for gastric indications.
+- Use an LLM agent to map combination regimens and trial suffixes (e.g., "IMC002注射液") to canonical names and identify emerging "CAR-armored-cell" or bispecific (CLDN18.2 x CD3) modalities.
 
 ## web-search
 - **Query Formatting & Length Constraints**: Keep queries concise, focus on a few key terms, and avoid complex syntax to prevent search engine errors. Strip special characters or shorten queries if no results are found.
