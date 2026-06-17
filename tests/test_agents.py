@@ -25,6 +25,9 @@ from src.agents.bdscan_agents.asset_research_agent import (
 from src.agents.bdscan_agents.context_agent import generate_context
 from src.agents.bdscan_agents.curator_agent import CuratorAgent
 from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
+from src.agents.bdscan_agents.intervention_classifier_agent import (
+    classify_interventions,
+)
 from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
 from src.core.exceptions import PipelineError
@@ -580,8 +583,6 @@ def test_classify_interventions_happy_path(mock_query):
     """classify_interventions correctly parses a valid LLM JSON response."""
     import json as _json
 
-    from src.utils.generate_landscape_table import classify_interventions
-
     mock_query.return_value = _json.dumps(
         {
             "asset": ["SHR-A1904", "Zolbetuximab"],
@@ -606,7 +607,6 @@ def test_classify_interventions_happy_path(mock_query):
 @patch("src.services.llm_client.LLMClient.query")
 def test_classify_interventions_llm_failure_raises(mock_query):
     """classify_interventions raises RuntimeError on LLM failure — no silent fallback."""
-    from src.utils.generate_landscape_table import classify_interventions
 
     mock_query.return_value = "Error: Gemini API key not configured."
 
@@ -620,7 +620,6 @@ def test_classify_interventions_llm_failure_raises(mock_query):
 @patch("src.services.llm_client.LLMClient.query")
 def test_classify_interventions_invalid_json_raises(mock_query):
     """classify_interventions raises RuntimeError if LLM returns non-JSON."""
-    from src.utils.generate_landscape_table import classify_interventions
 
     mock_query.return_value = "Sure, here are the assets: SHR-A1904, Zolbetuximab."
 
@@ -635,8 +634,6 @@ def test_classify_interventions_invalid_json_raises(mock_query):
 def test_classify_interventions_deduplicates_input(mock_query):
     """classify_interventions deduplicates names before calling the LLM."""
     import json as _json
-
-    from src.utils.generate_landscape_table import classify_interventions
 
     mock_query.return_value = _json.dumps(
         {"asset": ["SHR-A1904"], "background": ["Placebo"]}
@@ -852,6 +849,38 @@ def test_db_search_agent_run_cmd_unicode():
     success, stdout, stderr = run_cmd(["-c", "print('测试中文')"])
     assert success
     assert "测试中文" in stdout
+
+
+def test_discover_config_reuses_reconciled_json(tmp_path):
+    from src.utils.generate_landscape_table import discover_config
+
+    # Create a dummy reconciled.json
+    db_json_dir = tmp_path / "database_json"
+    db_json_dir.mkdir()
+    reconciled_file = db_json_dir / "reconciled.json"
+    reconciled_data = {
+        "Zolbetuximab": {
+            "canonical_name": "Zolbetuximab",
+            "aliases": ["Vyloy", "IMAB362"],
+            "modality": "Monoclonal Antibody",
+        }
+    }
+    with open(reconciled_file, "w", encoding="utf-8") as f:
+        json.dump(reconciled_data, f)
+
+    # Call discover_config and assert it maps from reconciled.json directly
+    config = discover_config(
+        ct_data={},
+        china_data=[],
+        target_name="CLDN18.2",
+        database_json_dir=str(db_json_dir),
+    )
+
+    assert "Zolbetuximab" in config
+    assert config["Zolbetuximab"]["aliases"] == ["Vyloy", "IMAB362"]
+    # Check that asset_config.json was also written
+    config_file = db_json_dir / "asset_config.json"
+    assert config_file.exists()
 
 
 if __name__ == "__main__":

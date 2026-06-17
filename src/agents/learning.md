@@ -3,21 +3,21 @@
 This file contains accumulated learnings, heuristics, and constraints gathered by the Biotech Analyst CLI agents during execution.
 
 ## database-search
-- Avoid PubChem for protein targets; they lack Compound Identifiers (CIDs) and consistently return 404 errors.
-- Use English official gene symbols (e.g., “CLDN18.2”) over descriptive synonyms to maximize coverage in NMPA CDE and technical databases.
-- Clinical registries (EU CTIS, ANZCTR) may return literature citations instead of raw trial records, indicating tool-specific indexing behavior.
-- Search openFDA by brand name (e.g., “Vyloy”) or generic name (e.g., “zolbetuximab”) as target names are rarely indexed in safety and label data.
-- Identify Chinese biologic and ADC trials in NMPA CDE using the “注射用” (Injectable) prefix followed by alphanumeric asset codes (e.g., “注射用JS107”).
+- Avoid PubChem for protein targets and biologics (e.g., antibodies); they lack Compound Identifiers (CIDs) and consistently return 404 errors.
+- On ClinicalTrials.gov, use spaced synonyms (e.g., “Claudin 18.2”) as they often capture more descriptive clinical records than official gene symbols.
+- In NMPA CDE, use English gene symbols first, but attempt the formal Chinese description (e.g., “紧密连接蛋白”) to capture specific domestic registrations.
+- Chinese WHO registries (ChiCTR/ICTRP) favor English official gene symbols; Mandarin phonetic or formal translations often yield zero results.
+- Search openFDA by brand (e.g., “Vyloy”) or generic name (e.g., “zolbetuximab”) as target names are not indexed in safety and label data.
+- Identify Chinese biologics and ADCs in NMPA CDE using the “注射用” (Injectable) prefix followed by alphanumeric asset codes (e.g., “注射用JS107”).
 - Conference databases are the primary source for tracking resistance mechanisms, such as secondary loss of expression or intrapatient heterogeneity.
-- ClinicalTrials.gov synonyms often yield identical result counts; a single search with a common synonym is usually sufficient to capture relevant trials.
-- Patent databases (e.g., Lens.org) are extremely sensitive to punctuation; test hyphenated, spaced, and concatenated strings (e.g., “Claudin-18.2” vs. “Claudin 18.2”).
-- To overcome low sensitivity in patent registries, broaden searches from specific isoforms to the parent protein name (e.g., “Claudin 18”).
+- Patent databases (e.g., Lens.org) are extremely sensitive to punctuation and decimals; avoid isoform suffixes (e.g., “.2”) in favor of parent protein names.
+- Broaden patent searches from specific isoforms to the parent name (e.g., “Claudin 18”) to overcome low sensitivity and technical indexing limitations.
+- Clinical registries (EU CTIS, ANZCTR) may return literature citations or registry testing protocols (e.g., SAPHIR) rather than raw trial records.
+- Use EU CTIS and ANZCTR to identify regional diagnostic profiles and multiplex testing trends (e.g., “Biology before Stage”) for targets alongside HER2 or PD-L1.
+- Access Chinese registries via direct web portals (NMPA CDE) to find the most current trial recruitment statuses and Phase III expansion data.
 - Do not retry searches for terms that trigger API errors (HTTP 400/404); these indicate fundamental tool or entity type limitations.
-- Use EU CTIS and ANZCTR to identify regional registries (e.g., SAPHIR) and diagnostic profiles where targets are tested alongside HER2 or PD-L1.
-- Access Chinese registries via direct web portals as they provide the most current trial recruitment statuses and Phase III expansion data.
-- If high-profile targets yield zero patent hits, verify if records are filed under broader classifications or specific preparation methods (e.g., “recombinant vaccine”).
-- Search conference abstracts for clinicopathologic correlates to identify emerging indications (e.g., Biliary Tract Cancer) before they appear in standard registries.
-- Mark a database search as complete only after attempting both official gene symbols and common English synonym variations.
+- Search conference abstracts for clinicopathologic correlates to identify emerging indications (e.g., Biliary Tract or Pancreatic Cancer) before they reach registries.
+- Mark a database search as complete only after attempting official gene symbols, spaced English synonyms, and parent protein names in patent tools.
 
 ## web-search
 - API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}

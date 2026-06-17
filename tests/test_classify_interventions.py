@@ -57,9 +57,11 @@ def _make_llm_client_mock(response_json: str):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_returns_asset_list(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = _make_llm_client_mock(
         _make_llm_response(["Zolbetuximab", "TST001"], ["chemotherapy"])
@@ -78,18 +80,22 @@ def test_classify_returns_asset_list(mock_llm_cls):
     assert "chemotherapy" not in result
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_empty_input_returns_empty_list(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     result = classify_interventions([], target_name="CLDN18.2")
     assert len(result) == 0
     mock_llm_cls.assert_not_called()
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_deduplicates_case_insensitively(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = _make_llm_client_mock(_make_llm_response(["Zolbetuximab"], []))
     mock_llm_cls.return_value = mock_client
@@ -104,9 +110,11 @@ def test_classify_deduplicates_case_insensitively(mock_llm_cls):
     assert "Zolbetuximab" in result
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_llm_failure_raises(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = _make_llm_client_mock("Error: API rate limit exceeded")
     mock_llm_cls.return_value = mock_client
@@ -115,9 +123,11 @@ def test_classify_llm_failure_raises(mock_llm_cls):
         classify_interventions(["Zolbetuximab"], target_name="CLDN18.2")
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_malformed_json_raises(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = _make_llm_client_mock("NOT VALID JSON {{{")
     mock_llm_cls.return_value = mock_client
@@ -126,9 +136,11 @@ def test_classify_malformed_json_raises(mock_llm_cls):
         classify_interventions(["TST001"], target_name="CLDN18.2")
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_strips_markdown_fences(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     fenced_response = '```json\n{"asset": ["AMG910"], "background": []}\n```'
     mock_client = _make_llm_client_mock(fenced_response)
@@ -143,10 +155,12 @@ def test_classify_strips_markdown_fences(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_batch_size_respected(mock_llm_cls):
     """classify_interventions must call LLM once per batch of batch_size names."""
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = MagicMock()
     # Return all as assets
@@ -166,9 +180,11 @@ def test_classify_batch_size_respected(mock_llm_cls):
     assert mock_client.query.call_count == 4
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_batch_size_50_uses_one_call(mock_llm_cls):
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = _make_llm_client_mock(
         json.dumps({"asset": ["Drug001"], "background": []})
@@ -187,13 +203,15 @@ def test_classify_batch_size_50_uses_one_call(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_hallucination_validator_rejects_missing_names(mock_llm_cls):
     """
     The hallucination validator should reject any name the LLM 'invented'
     that is not actually present in the source text (case-insensitive containment).
     """
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     primary_response = json.dumps(
         {
@@ -223,13 +241,15 @@ def test_hallucination_validator_rejects_missing_names(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_modality_filter_catches_generic_terms(mock_llm_cls):
     """
     The secondary modality filter must reject entries where the LLM classifies
     a generic modality term or target gene (not a specific molecule) as an asset.
     """
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     primary_response = json.dumps(
         {
@@ -271,13 +291,15 @@ def test_modality_filter_catches_generic_terms(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_returns_list_of_dicts_in_s2(mock_llm_cls):
     """
     In §2, classify_interventions should return list[dict] with the fields:
     canonical_name, aliases, modality, targets, filtered_terms
     """
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     primary_response = json.dumps(
         {
@@ -317,10 +339,12 @@ def test_classify_returns_list_of_dicts_in_s2(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.tools.classify_interventions.LLMClient")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_batch_size_param_controls_split(mock_llm_cls):
     """Verify the batch_size parameter is honoured for any value."""
-    from src.tools.classify_interventions import classify_interventions
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,
+    )
 
     mock_client = MagicMock()
     mock_client.query.return_value = json.dumps({"assets": [], "background": []})

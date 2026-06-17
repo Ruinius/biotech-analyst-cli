@@ -11,7 +11,9 @@ all tests and downstream consumers are updated to import from the submodules.
 """
 
 # Re-export everything from the new submodule locations
-from src.tools.classify_interventions import classify_interventions  # noqa: F401
+from src.agents.bdscan_agents.intervention_classifier_agent import (
+    classify_interventions,  # noqa: F401
+)
 from src.utils.landscape.config_builder import (  # noqa: F401
     discover_config,
     merge_config_duplicates,

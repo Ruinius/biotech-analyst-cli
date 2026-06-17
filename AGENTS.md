@@ -31,11 +31,10 @@ This file indexes the workspace structure and defines architectural rules/constr
     - `bdscan_orchestrator.py` & `deepdive_orchestrator.py`: Multi-agent pipeline orchestrators.
   - `agents/`: AI agents folder (one agent per file).
     - `learning.md`: Shared lessons and guidelines.
-    - `bdscan_agents/`: Broad scan agents (`context_agent.py`, `db_search_agent.py`, `landscape_compiler_agent.py`, `asset_research_agent.py`, `curator_agent.py`, `synthesis_agent.py`).
+    - `bdscan_agents/`: Broad scan agents (`context_agent.py`, `db_search_agent.py`, `landscape_compiler_agent.py`, `asset_research_agent.py`, `curator_agent.py`, `synthesis_agent.py`, `intervention_classifier_agent.py`).
     - `deepdive_agents/`: Deep-dive diligence agents.
   - `services/llm_client.py`: Thread-safe FIFO queue LLM interface (Gemini, OpenRouter, DeepSeek).
-  - `tools/`: Programmatic database fetchers, summarizers, and classifier tools.
-    - `classify_interventions.py`: LLM-based intervention classification and verification.
+  - `tools/`: Programmatic database fetchers and summarizers.
     - `fetch_*.py` & `summarize_*.py`: API/scraping queries for sources (ClinicalTrials, PubChem, openFDA, ANZCTR/CTIS, conferences, Chinese registries, NMPA CDE direct, Lens.org).
   - `utils/`: Data parsing, reporting, and CLI utilities.
     - `generate_landscape_table.py`: Re-export shim for landscape table compilation.

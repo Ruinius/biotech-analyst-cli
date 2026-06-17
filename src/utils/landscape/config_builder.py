@@ -10,7 +10,9 @@ import json
 import os
 import re
 
-from src.tools.classify_interventions import classify_interventions
+from src.agents.bdscan_agents.intervention_classifier_agent import (
+    classify_interventions,
+)
 from src.utils.landscape.table_formatters import (
     _name_priority,
     normalize_drug_name,
@@ -245,6 +247,40 @@ def discover_config(
     Raises RuntimeError if LLM classification fails (no silent fallback).
     """
     target_synonyms = target_synonyms or []
+
+    # -----------------------------------------------------------------------
+    # 0. Attempt to load from reconciled.json to skip duplicate classification
+    # -----------------------------------------------------------------------
+    if database_json_dir:
+        from pathlib import Path
+
+        reconciled_path = Path(database_json_dir) / "reconciled.json"
+        if reconciled_path.exists():
+            print(
+                f"[config_builder] Found {reconciled_path}. Reusing reconciled asset mapping..."
+            )
+            try:
+                with open(reconciled_path, encoding="utf-8") as f:
+                    reconciled = json.load(f)
+
+                # Build config mapping canonical name -> aliases
+                config = {}
+                for primary, details in reconciled.items():
+                    config[primary] = {"aliases": details.get("aliases", [])}
+
+                # Persist config just as before
+                config_path = os.path.join(database_json_dir, "asset_config.json")
+                os.makedirs(database_json_dir, exist_ok=True)
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                print(
+                    "[config_builder] Successfully compiled config from reconciled.json"
+                )
+                return config
+            except Exception as e:
+                print(
+                    f"[config_builder] Warning: Failed to parse reconciled.json: {e}. Falling back to LLM classification."
+                )
 
     # -----------------------------------------------------------------------
     # 1. Collect (primary_name, [aliases]) pairs from ClinicalTrials.gov

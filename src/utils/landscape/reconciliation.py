@@ -290,7 +290,9 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
 
     Falls back gracefully if no database_json files are found.
     """
-    from src.tools.classify_interventions import classify_interventions  # noqa: PLC0415
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        classify_interventions,  # noqa: PLC0415
+    )
     from src.utils.landscape.table_formatters import (  # noqa: PLC0415
         _name_priority,
         normalize_drug_name,

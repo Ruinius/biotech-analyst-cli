@@ -459,3 +459,14 @@ def test_llm_client_streaming_error_handling(mock_load_config):
             mock_response.read.assert_called_once()
             assert "Failed to call Gemini API" in res
             assert "Bad Request" in res
+
+
+def test_cli_deepdive_under_construction():
+    from typer.testing import CliRunner
+
+    from src.cli.main import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["deepdive"])
+    assert result.exit_code == 0
+    assert "under construction" in result.stdout.lower()

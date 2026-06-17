@@ -1,14 +1,8 @@
 """
-LLM-based intervention classifier tool.
+LLM-based intervention classifier agent.
 
-Moved from generate_landscape_table.py (§3 decomposition).
-Extended in §2 to return list[dict] with modality/targets/filtered_terms.
-
-Single source of truth for all LLM-based intervention classification and
-alias resolution logic. Imported by:
-  - src/utils/landscape/reconciliation.py  (§1 Phase 2 matching)
-  - src/agents/bdscan_agents/landscape_compiler_agent.py  (§3 table compilation)
-  - src/utils/landscape/config_builder.py  (synonym group building)
+Handles all LLM-based intervention classification and alias resolution logic.
+Moved from src/tools/classify_interventions.py to become a dedicated BD Scan agent.
 """
 
 import json

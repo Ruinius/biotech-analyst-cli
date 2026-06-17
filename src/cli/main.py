@@ -23,7 +23,6 @@ from src.core.config import (
     mask_key,
     save_config,
 )
-from src.core.deepdive_orchestrator import run_deepdive_pipeline
 from src.utils import formatting
 from src.utils.query_parser import parse_query_via_llm
 
@@ -554,94 +553,14 @@ def main_bdscan(
 
 @app.command("deepdive")
 def main_deepdive(
-    action: str = typer.Argument(..., help="Action to perform: 'new' or 'rerun'"),
+    action: str = typer.Argument(None, help="Action to perform: 'new' or 'rerun'"),
 ):
-    """Conduct due diligence clinical and commercial deep-dives on a specific asset."""
-    if not config_exists():
-        formatting.print_error("Configuration not found. Please run 'ba config' first.")
-        raise typer.Exit(1)
-
-    settings = load_config()
-    base_path = Path(settings.expanded_base_folder)
-    action = action.strip().lower()
-
-    target_dir = None
-    asset_name = None
-    folder_safe_name = None
-    developer = ""
-    trial_id = ""
-
-    if action == "new":
-        asset_name = typer.prompt("Enter target asset name/code (e.g. Osemitamab)")
-        asset_name = asset_name.strip()
-        if not asset_name:
-            formatting.print_error("Asset name cannot be empty.")
-            raise typer.Exit(1)
-
-        developer = typer.prompt("Enter developer/sponsor (e.g. Transcenta)")
-        trial_id = typer.prompt(
-            "Enter primary Clinical Trial ID (NCT or CTR ID)", default="NCT04818671"
-        )
-
-        today = datetime.date.today().strftime("%Y%m%d")
-        folder_safe_name = "".join(
-            c if c.isalnum() or c in ("-", "_") else "_" for c in asset_name
-        )
-        target_folder_name = f"{today}_{folder_safe_name}_DeepDive"
-        target_dir = base_path / target_folder_name
-
-    elif action == "rerun":
-        folders = get_folders_list(base_path)
-        if not folders:
-            formatting.print_error("No deep-dive directories available for rerun.")
-            raise typer.Exit(1)
-
-        print("Select deep-dive folder to rerun:")
-        for idx, folder in enumerate(folders):
-            print(f"  {idx}) {folder.name}")
-        choice_idx = typer.prompt("Select folder number", type=int)
-        if 0 <= choice_idx < len(folders):
-            target_dir = folders[choice_idx]
-            parts = target_dir.name.split("_")
-            if len(parts) >= 3:
-                asset_name = "_".join(parts[1:-1])
-            else:
-                asset_name = target_dir.name
-            folder_safe_name = "".join(
-                c if c.isalnum() or c in ("-", "_") else "_" for c in asset_name
-            )
-        else:
-            formatting.print_error("Invalid selection.")
-            raise typer.Exit(1)
-
-    else:
-        formatting.print_error("Action must be 'new' or 'rerun'.")
-        raise typer.Exit(1)
-
-    try:
-        pdf_out = run_deepdive_pipeline(
-            settings=settings,
-            action=action,
-            asset_name=asset_name,
-            folder_safe_name=folder_safe_name,
-            target_dir=target_dir,
-            developer=developer,
-            trial_id=trial_id,
-        )
-    except Exception as e:
-        formatting.print_error(f"Pipeline execution failed: {e}")
-        raise typer.Exit(1)
-
-    if sys.platform.startswith("win") and pdf_out.exists():
-        open_pdf = typer.confirm(
-            "Would you like to open the compiled PDF now?", default=True
-        )
-        if open_pdf:
-            try:
-                os.startfile(pdf_out)
-                formatting.print_success("PDF Reader launched.")
-            except Exception as e:
-                formatting.print_error(f"Failed to open PDF: {e}")
+    """Conduct due diligence clinical and commercial deep-dives on a specific asset [UNDER CONSTRUCTION]."""
+    formatting.speak(
+        "The deep-dive due diligence pipeline is currently under construction for now!",
+        include_interjection=True,
+    )
+    raise typer.Exit(0)
 
 
 def main():
@@ -663,7 +582,7 @@ def main():
                 msg = "Scanning sequence initiated! Shall we run a broad market or pathway meta-analysis scan?"
                 break
             elif arg == "deepdive":
-                msg = "Due diligence sweep ready! Let us perform deep clinical asset diligence!"
+                msg = "The deep-dive due diligence pipeline is currently under construction for now!"
                 break
         formatting.speak(msg, include_interjection=False)
 

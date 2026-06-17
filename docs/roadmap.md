@@ -115,3 +115,5 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] Increase or configure the read timeout specifically for the streaming HTTP client in [llm_client.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/services/llm_client.py) (e.g., using `httpx.Timeout(60.0, connect=10.0)`) to prevent `httpx.ReadTimeout` errors during API server load or long generation stalls.
 - [x] Optimize and decrease the batch size of the assets parsed in parallel in the orchestrators to keep the LLM prompt payloads smaller, reduce time-to-first-token latency, and avoid timeouts.
 - [x] Explore concurrency for database result reconciliation: modify `classify_interventions()` to submit batch tasks in parallel, and enhance `LLMQueueManager` and `LLMClient` to support concurrent worker pools, rate-limiting jitter, and buffered/non-streaming console outputs to prevent interleaved logs.
+- [x] classify_interventions should be an agent in bdscan_agent.
+- [x] deepdive should show as under construction for now.

@@ -55,10 +55,12 @@ def test_import_reconciliation():
     assert hasattr(reconciliation, "reconcile_all_sources")
 
 
-def test_import_classify_interventions_tool():
+def test_import_classify_interventions_agent():
     import importlib
 
-    spec = importlib.util.find_spec("src.tools.classify_interventions")
+    spec = importlib.util.find_spec(
+        "src.agents.bdscan_agents.intervention_classifier_agent"
+    )
     assert spec is not None
 
 

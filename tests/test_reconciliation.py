@@ -22,6 +22,9 @@ _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+from src.agents.bdscan_agents.intervention_classifier_agent import (  # noqa: E402
+    AssetList,
+)
 from src.utils.landscape.reconciliation import (  # noqa: E402
     map_anzctr_ctis,
     map_china_cde,
@@ -216,7 +219,6 @@ def test_map_openfda_returns_dict():
 # 2. reconcile_all_sources integration test (LLM mocked)
 # ---------------------------------------------------------------------------
 
-from src.tools.classify_interventions import AssetList  # noqa: E402
 
 MOCK_CLASSIFIED_ASSETS = AssetList(
     [
@@ -259,7 +261,7 @@ def _write_fixture_files(db_dir: Path, folder_safe_name: str):
     )
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_creates_output_files(mock_classify):
     mock_classify.return_value = MOCK_CLASSIFIED_ASSETS
 
@@ -280,7 +282,7 @@ def test_reconcile_creates_output_files(mock_classify):
         assert log_path.exists(), "reconciliation_log.json should be created"
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_canonical_asset_in_output(mock_classify):
     mock_classify.return_value = MOCK_CLASSIFIED_ASSETS
 
@@ -309,7 +311,7 @@ def test_reconcile_canonical_asset_in_output(mock_classify):
         assert any("zolbetuximab" in n.lower() for n in all_names)
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_ct_trial_assigned(mock_classify):
     mock_classify.return_value = MOCK_CLASSIFIED_ASSETS
 
@@ -347,7 +349,7 @@ def test_reconcile_ct_trial_assigned(mock_classify):
         assert china_found or len(reconciled) >= 1
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_log_has_background_count(mock_classify):
     # classify_interventions returns only Zolbetuximab — everything else is background
     mock_classify.return_value = AssetList(
@@ -380,7 +382,7 @@ def test_reconcile_log_has_background_count(mock_classify):
         assert "total_records_processed" in log
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_no_database_json_dir_graceful(mock_classify):
     """reconcile_all_sources should return gracefully if database_json/ does not exist."""
     mock_classify.return_value = AssetList()
@@ -392,7 +394,7 @@ def test_reconcile_no_database_json_dir_graceful(mock_classify):
         # No exception should be raised
 
 
-@patch("src.tools.classify_interventions.classify_interventions")
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.classify_interventions")
 def test_reconcile_llm_failure_writes_empty(mock_classify):
     """If LLM classification fails, reconcile should write empty artifacts and not crash."""
     mock_classify.side_effect = RuntimeError("LLM_CLASSIFY_FAILED: test error")
