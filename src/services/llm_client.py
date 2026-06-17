@@ -77,6 +77,9 @@ class LLMClient:
         if not self.settings:
             return "Error: Configuration settings not found."
 
+        if threading.current_thread() != threading.main_thread():
+            stream = False
+
         provider = (self.settings.llm_provider or "gemini").lower()
 
         if provider == "gemini":

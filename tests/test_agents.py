@@ -222,9 +222,9 @@ def test_asset_research_agent_learnings(settings, target_dir):
 
         # Write dummy landscape table first
         table_path = target_dir / "research" / "landscape_table.md"
-        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-        row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |"
+        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Licensing status pending. | Web research pending. | N/A |"
         table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
         agent.research_all_assets()
@@ -285,15 +285,15 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
     # Turn 1 search, Turn 2 update table and finalize
     mock_query.side_effect = [
         '[TOOL_CALL: web_search(query="Zolbetuximab efficacy")]',
-        '[TOOL_CALL: edit_landscape_table(safety="Mild nausea", efficacy="ORR 60%", milestones="Readout 2027", citations="ASCO 2026")]',
+        '[TOOL_CALL: edit_landscape_table(safety="Mild nausea", efficacy="ORR 60%", licensing="Available", milestones="Readout 2027", citations="ASCO 2026")]',
         "All completed [FINALIZE]",
     ]
 
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
-    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Licensing status pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
     agent = AssetResearchAgent(settings, target_dir)
@@ -306,8 +306,9 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
     cols = [c.strip() for c in lines[2].split("|")]
     assert cols[9] == "Mild nausea"
     assert cols[10] == "ORR 60%"
-    assert cols[11] == "Readout 2027"
-    assert cols[12] == "ASCO 2026"
+    assert cols[11] == "Available"
+    assert cols[12] == "Readout 2027"
+    assert cols[13] == "ASCO 2026"
 
 
 @patch("src.services.llm_client.LLMClient.query")
@@ -823,9 +824,9 @@ def test_parse_existing_report_dynamic_columns(tmp_path):
 
     # Test table with leading # column
     table_with_hash = (
-        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-        "| 1 | **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| 1 | **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | licensing_val | milestone_val | citation_val |\n"
     )
     report_file = tmp_path / "report_hash.md"
     report_file.write_text(table_with_hash, encoding="utf-8")
@@ -836,14 +837,15 @@ def test_parse_existing_report_dynamic_columns(tmp_path):
     assert "Zolbetuximab" in metadata
     assert metadata["Zolbetuximab"]["safety"] == "safety_val"
     assert metadata["Zolbetuximab"]["efficacy"] == "efficacy_val"
+    assert metadata["Zolbetuximab"]["licensing"] == "licensing_val"
     assert metadata["Zolbetuximab"]["milestones"] == "milestone_val"
     assert metadata["Zolbetuximab"]["citations"] == "citation_val"
 
     # Test table without leading # column
     table_no_hash = (
-        "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-        "| **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val2 | efficacy_val2 | milestone_val2 | citation_val2 |\n"
+        "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| **Zolbetuximab**<br>*(Vyloy / IMAB362)* | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val2 | efficacy_val2 | licensing_val2 | milestone_val2 | citation_val2 |\n"
     )
     report_file_no_hash = tmp_path / "report_no_hash.md"
     report_file_no_hash.write_text(table_no_hash, encoding="utf-8")
@@ -852,6 +854,7 @@ def test_parse_existing_report_dynamic_columns(tmp_path):
     assert "Zolbetuximab" in metadata2
     assert metadata2["Zolbetuximab"]["safety"] == "safety_val2"
     assert metadata2["Zolbetuximab"]["efficacy"] == "efficacy_val2"
+    assert metadata2["Zolbetuximab"]["licensing"] == "licensing_val2"
 
 
 def test_parse_report_table_dynamic_columns(tmp_path):
@@ -859,9 +862,9 @@ def test_parse_report_table_dynamic_columns(tmp_path):
 
     # Test table with leading # column
     table_with_hash = (
-        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-        "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | milestone_val | citation_val |\n"
+        "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |\n"
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+        "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | safety_val | efficacy_val | licensing_val | milestone_val | citation_val |\n"
     )
     report_file = tmp_path / "report_hash.md"
     report_file.write_text(table_with_hash, encoding="utf-8")
@@ -960,14 +963,14 @@ def test_asset_research_agent_fallback(
         '[TOOL_CALL: web_search(query="Zolbetuximab milestones")]',
         '[TOOL_CALL: web_search(query="Zolbetuximab citations")]',
         # Fallback query response
-        '{"safety": "Mild toxicity", "efficacy": "PR 45%", "milestones": "Phase 3 readout", "citations": "PubMed 123"}',
+        '{"safety": "Mild toxicity", "efficacy": "PR 45%", "licensing": "In-house/Big Pharma", "milestones": "Phase 3 readout", "citations": "PubMed 123"}',
     ]
 
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
-    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Licensing status pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
     agent = AssetResearchAgent(settings, target_dir)
@@ -979,8 +982,9 @@ def test_asset_research_agent_fallback(
     cols = [c.strip() for c in lines[2].split("|")]
     assert cols[9] == "Mild toxicity"
     assert cols[10] == "PR 45%"
-    assert cols[11] == "Phase 3 readout"
-    assert cols[12] == "PubMed 123"
+    assert cols[11] == "In-house/Big Pharma"
+    assert cols[12] == "Phase 3 readout"
+    assert cols[13] == "PubMed 123"
 
 
 @patch("src.services.llm_client.LLMClient.query")

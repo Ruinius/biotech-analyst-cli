@@ -86,15 +86,21 @@ def parse_existing_report(report_path: str | None, config: dict) -> dict:
                         "Key Efficacy / Biomarker Data", 9 if "#" in col_indices else 8
                     ),
                 )
+                licensing_idx = col_indices.get(
+                    "Web Licensing Status & Partners",
+                    col_indices.get(
+                        "Licensing Status & Partners", 10 if "#" in col_indices else 9
+                    ),
+                )
                 milestones_idx = col_indices.get(
                     "Web Upcoming Milestones",
                     col_indices.get(
-                        "Upcoming Milestones", 10 if "#" in col_indices else 9
+                        "Upcoming Milestones", 11 if "#" in col_indices else 10
                     ),
                 )
                 citations_idx = col_indices.get(
                     "Web Citations / Sources",
-                    col_indices.get("Citations", 11 if "#" in col_indices else 10),
+                    col_indices.get("Citations", 12 if "#" in col_indices else 11),
                 )
 
                 if asset_idx >= len(cols):
@@ -136,6 +142,9 @@ def parse_existing_report(report_path: str | None, config: dict) -> dict:
                         "safety": cols[safety_idx] if safety_idx < len(cols) else "",
                         "efficacy": cols[efficacy_idx]
                         if efficacy_idx < len(cols)
+                        else "",
+                        "licensing": cols[licensing_idx]
+                        if licensing_idx < len(cols)
                         else "",
                         "milestones": cols[milestones_idx]
                         if milestones_idx < len(cols)

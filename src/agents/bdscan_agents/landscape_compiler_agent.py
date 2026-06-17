@@ -75,8 +75,8 @@ def compile_landscape_table(
     except Exception as e:
         formatting.print_error(f"Landscape table generation failed: {e}")
         # Write dummy empty table so pipeline doesn't crash entirely
-        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Licensing Status & Partners | Web Upcoming Milestones | Web Citations / Sources |"
+        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
         dummy_md = f"{headers}\n{divider}\n"
         master_table_out.write_text(md_table_to_text_table(dummy_md), encoding="utf-8")
         csv_out = master_table_out.with_suffix(".csv")
@@ -104,23 +104,25 @@ def compile_landscape_table(
             continue
 
         if idx == 0:
-            # Header line: append 4 new Web columns
+            # Header line: append 5 new Web columns
             new_cols = cols[1:-1] + [
                 "Web Selectivity & Safety Profile",
                 "Web Key Efficacy Data",
+                "Web Licensing Status & Partners",
                 "Web Upcoming Milestones",
                 "Web Citations / Sources",
             ]
             modified_lines.append("| " + " | ".join(new_cols) + " |")
         elif idx == 1:
-            # Divider line: append 4 new dividers
-            new_divs = cols[1:-1] + [":---", ":---", ":---", ":---"]
+            # Divider line: append 5 new dividers
+            new_divs = cols[1:-1] + [":---", ":---", ":---", ":---", ":---"]
             modified_lines.append("| " + " | ".join(new_divs) + " |")
         else:
-            # Data row: append 4 Web placeholder cells
+            # Data row: append 5 Web placeholder cells
             new_data = cols[1:-1] + [
                 "Web research pending.",
                 "Web research pending.",
+                "Licensing status pending.",
                 "Web research pending.",
                 "N/A",
             ]

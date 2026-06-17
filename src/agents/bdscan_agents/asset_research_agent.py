@@ -48,6 +48,7 @@ def update_table_row(
     asset_name: str,
     safety: str,
     efficacy: str,
+    licensing: str,
     milestones: str,
     citations: str,
     config: dict | None = None,
@@ -74,21 +75,28 @@ def update_table_row(
         asset_idx = 1
         safety_idx = 12
         efficacy_idx = 13
-        milestones_idx = 14
-        citations_idx = 15
+        licensing_idx = 14
+        milestones_idx = 15
+        citations_idx = 16
     else:
         asset_idx = col_indices.get("Asset Name", 1)
         safety_idx = col_indices.get("Web Selectivity & Safety Profile", 12)
         efficacy_idx = col_indices.get("Web Key Efficacy Data", 13)
-        milestones_idx = col_indices.get("Web Upcoming Milestones", 14)
-        citations_idx = col_indices.get("Web Citations / Sources", 15)
+        licensing_idx = col_indices.get("Web Licensing Status & Partners", 14)
+        milestones_idx = col_indices.get("Web Upcoming Milestones", 15)
+        citations_idx = col_indices.get("Web Citations / Sources", 16)
 
     for idx, line in enumerate(lines):
         if not line.strip() or idx <= header_idx + 1:
             continue
         cols = [c.strip() for c in line.split("|")]
         if len(cols) <= max(
-            asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx
+            asset_idx,
+            safety_idx,
+            efficacy_idx,
+            licensing_idx,
+            milestones_idx,
+            citations_idx,
         ):
             continue
 
@@ -97,6 +105,7 @@ def update_table_row(
         if cleaned_name.lower() == asset_name.lower():
             cols[safety_idx] = safety.replace("\n", " ").replace("|", "\\|")
             cols[efficacy_idx] = efficacy.replace("\n", " ").replace("|", "\\|")
+            cols[licensing_idx] = licensing.replace("\n", " ").replace("|", "\\|")
             cols[milestones_idx] = milestones.replace("\n", " ").replace("|", "\\|")
             cols[citations_idx] = citations.replace("\n", " ").replace("|", "\\|")
             lines[idx] = "| " + " | ".join(cols[1:-1]) + " |"
@@ -287,17 +296,20 @@ class AssetResearchAgent:
                 asset_idx = 1
                 safety_idx = 12
                 efficacy_idx = 13
-                milestones_idx = 14
-                citations_idx = 15
+                licensing_idx = 14
+                milestones_idx = 15
+                citations_idx = 16
             else:
                 asset_idx = col_indices.get("Asset Name", 1)
                 safety_idx = col_indices.get("Web Selectivity & Safety Profile", 12)
                 efficacy_idx = col_indices.get("Web Key Efficacy Data", 13)
-                milestones_idx = col_indices.get("Web Upcoming Milestones", 14)
-                citations_idx = col_indices.get("Web Citations / Sources", 15)
+                licensing_idx = col_indices.get("Web Licensing Status & Partners", 14)
+                milestones_idx = col_indices.get("Web Upcoming Milestones", 15)
+                citations_idx = col_indices.get("Web Citations / Sources", 16)
 
             parent_safety = "Duplicate. Refer to parent."
             parent_efficacy = "Duplicate. Refer to parent."
+            parent_licensing = "Duplicate. Refer to parent."
             parent_milestones = "Duplicate. Refer to parent."
             parent_citations = "N/A"
 
@@ -306,7 +318,12 @@ class AssetResearchAgent:
                     continue
                 cols = [c.strip() for c in line.split("|")]
                 if len(cols) <= max(
-                    asset_idx, safety_idx, efficacy_idx, milestones_idx, citations_idx
+                    asset_idx,
+                    safety_idx,
+                    efficacy_idx,
+                    licensing_idx,
+                    milestones_idx,
+                    citations_idx,
                 ):
                     continue
                 if (
@@ -315,6 +332,7 @@ class AssetResearchAgent:
                 ):
                     parent_safety = cols[safety_idx]
                     parent_efficacy = cols[efficacy_idx]
+                    parent_licensing = cols[licensing_idx]
                     parent_milestones = cols[milestones_idx]
                     parent_citations = cols[citations_idx]
                     break
@@ -324,6 +342,7 @@ class AssetResearchAgent:
                 asset_name=duplicate_name,
                 safety=parent_safety,
                 efficacy=parent_efficacy,
+                licensing=parent_licensing,
                 milestones=parent_milestones,
                 citations=parent_citations,
                 config=None,
@@ -368,7 +387,7 @@ class AssetResearchAgent:
             return ""
 
     def run_loop_for_asset(self, table_path: Path, asset_name: str, cols: list[str]):
-        history = []
+        history_turns = []
         turn_budget = 4
         table_updated = False
 
@@ -388,45 +407,76 @@ class AssetResearchAgent:
         system_instruction = (
             f"You are Dr. Hops' Asset Research Agent dilution scout for the candidate '{asset_name}'.\n"
             f"Developer: {sponsor}, Modality: {modality}, Phase: {phase}, Trial IDs: {trials}.\n"
-            "Your objective is to find recent clinical data, selectivity profile details, and upcoming milestones.\n"
+            "Your objective is to find recent clinical data, selectivity profile details, licensing availability/partnerships, and upcoming milestones.\n"
+            "For licensing availability, investigate if the asset is available for in-licensing: it is likely NOT available if the developer/sponsor is a big pharma company, or if they already have an existing US/EU regional licensing or partnership deal. Focus on identifying existing partners or in-licensing feasibility.\n"
             "You have a budget of up to 4 turns.\n"
             "Supported tools:\n"
             '- [TOOL_CALL: web_search(query="query_string")]\n'
-            '- [TOOL_CALL: edit_landscape_table(safety="...", efficacy="...", milestones="...", citations="...")]\n'
+            '- [TOOL_CALL: edit_landscape_table(safety="...", efficacy="...", licensing="...", milestones="...", citations="...")]\n'
             f"{learnings_block}"
             "When done or on Turn 4, write your final response ending with the [FINALIZE] tag.\n"
             "Always cite PMIDs, NCT links, press releases, or conference abstracts."
         )
 
         for turn in range(1, turn_budget + 1):
-            prompt = (
-                f"We are conducting due diligence on '{asset_name}' developed by '{sponsor}'.\n"
-                f"Turn {turn} details:\n"
-            )
             if turn == turn_budget:
-                prompt += (
+                current_instructions = (
                     "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST call the edit_landscape_table tool "
-                    "now with all qualitative safety, efficacy, and milestone information you have found so far, and output [FINALIZE] "
+                    "now with all qualitative safety, efficacy, licensing, and milestone information you have found so far, and output [FINALIZE] "
                     "in your response to save your work. If you do not call edit_landscape_table now, your research will be lost."
                 )
             elif turn == 1:
-                prompt += f"Please run an initial web_search to find selectivity, safety, and clinical milestones for {asset_name}."
+                current_instructions = f"Please run an initial web_search to find selectivity, safety, licensing/partnership status, and clinical milestones for {asset_name}."
             else:
-                prompt += (
-                    "Review the search results. If you have sufficient qualitative safety, efficacy, and milestone information, "
+                current_instructions = (
+                    "Review the search results. If you have sufficient qualitative safety, efficacy, licensing, and milestone information, "
                     "call the edit_landscape_table tool to update the table, and output [FINALIZE]. Otherwise, run another search."
                 )
 
-            # Invoke LLM
-            full_prompt = prompt + "\n\nHistory:\n" + "\n".join(history)
+            # Construct prompt using XML tags to avoid LLM transcript-completion loops
+            prompt_parts = [
+                f"We are conducting due diligence on '{asset_name}' developed by '{sponsor}'."
+            ]
+            if history_turns:
+                prompt_parts.append("<conversation_history>")
+                for h_turn in history_turns:
+                    prompt_parts.append(f'  <turn number="{h_turn["number"]}">')
+                    prompt_parts.append(
+                        f"    <instructions>{h_turn['instructions']}</instructions>"
+                    )
+                    prompt_parts.append(
+                        f"    <response>{h_turn['response']}</response>"
+                    )
+                    if "tool_result" in h_turn:
+                        prompt_parts.append(
+                            f"    <tool_result>{h_turn['tool_result']}</tool_result>"
+                        )
+                    prompt_parts.append("  </turn>")
+                prompt_parts.append("</conversation_history>\n")
+
+            prompt_parts.append(f'<current_turn number="{turn}">')
+            prompt_parts.append(
+                f"  <instructions>{current_instructions}</instructions>"
+            )
+            prompt_parts.append("</current_turn>\n")
+            prompt_parts.append(
+                "Provide your response for the current turn. Output ONLY the response/tool call for the current turn. "
+                "Do NOT include any tags, conversational fillers, or future turns."
+            )
+
+            full_prompt = "\n".join(prompt_parts)
+
             response = self.client.query(
                 full_prompt,
                 system_instruction,
                 temperature=0.2,
             )
 
-            history.append(f"User: {prompt}")
-            history.append(f"Agent: {response}")
+            turn_record = {
+                "number": turn,
+                "instructions": current_instructions,
+                "response": response,
+            }
 
             # Parse tool calls
             tool_match = re.search(
@@ -438,9 +488,7 @@ class AssetResearchAgent:
 
                 if called_tool == "web_search":
                     if turn == turn_budget:
-                        history.append(
-                            "System Tool Result: Error: Cannot execute web search on final turn. Turn budget exhausted."
-                        )
+                        result = "Error: Cannot execute web search on final turn. Turn budget exhausted."
                     else:
                         # Extract query
                         query_match = re.search(r"query\s*=\s*\"(.*?)\"", args_str)
@@ -451,15 +499,18 @@ class AssetResearchAgent:
                         )
                         sanitized_query = sanitize_search_query(query)
                         result = web_search(sanitized_query)
-                        history.append(f"System Tool Result: {result}")
+                    turn_record["tool_result"] = result
                 elif called_tool == "edit_landscape_table":
-                    # Parse safety, efficacy, milestones, citations
+                    # Parse safety, efficacy, licensing, milestones, citations
                     args = {}
                     for kv in re.findall(r"([a-zA-Z_0-9]+)\s*=\s*\"(.*?)\"", args_str):
                         args[kv[0]] = kv[1]
 
                     safety = args.get("safety") or "Safety profile evaluated."
                     efficacy = args.get("efficacy") or "Efficacy data reviewed."
+                    licensing = (
+                        args.get("licensing") or "Licensing status pending/unknown."
+                    )
                     milestones = (
                         args.get("milestones") or "Next clinical readout pending."
                     )
@@ -471,14 +522,17 @@ class AssetResearchAgent:
                             asset_name,
                             safety,
                             efficacy,
+                            licensing,
                             milestones,
                             citations,
                             self.asset_config,
                         )
-                    history.append("System Tool Result: Table updated successfully.")
+                    turn_record["tool_result"] = "Table updated successfully."
                     table_updated = True
                 else:
-                    history.append(f"System Tool Result: Unknown tool '{called_tool}'.")
+                    turn_record["tool_result"] = f"Unknown tool '{called_tool}'."
+
+            history_turns.append(turn_record)
 
             if "[FINALIZE]" in response or turn == turn_budget:
                 break
@@ -488,19 +542,35 @@ class AssetResearchAgent:
             formatting.print_warning(
                 f"Web research agent did not update the table for {asset_name}. Running fallback extraction..."
             )
+            history_text_list = []
+            for h_turn in history_turns:
+                history_text_list.append(
+                    f"Turn {h_turn['number']} Instructions: {h_turn['instructions']}"
+                )
+                history_text_list.append(
+                    f"Turn {h_turn['number']} Response: {h_turn['response']}"
+                )
+                if "tool_result" in h_turn:
+                    history_text_list.append(
+                        f"Turn {h_turn['number']} Tool Result: {h_turn['tool_result']}"
+                    )
+            history_text = "\n".join(history_text_list)
+
             fallback_prompt = (
                 f"Based on the research history below for candidate '{asset_name}', please extract or summarize the following fields:\n"
                 f"1. Selectivity & Safety Profile (concise description)\n"
                 f"2. Key Efficacy Data (concise description)\n"
-                f"3. Upcoming Milestones (concise description)\n"
-                f"4. Citations / Sources (PMIDs, trial registry IDs, or links)\n\n"
-                f"Research History:\n" + "\n".join(history) + "\n\n"
+                f"3. Licensing Status & Partners (concise description of licensing availability, sponsor class (e.g. big pharma), and/or existing deals)\n"
+                f"4. Upcoming Milestones (concise description)\n"
+                f"5. Citations / Sources (PMIDs, trial registry IDs, or links)\n\n"
+                f"Research History:\n" + history_text + "\n\n"
                 "Respond ONLY with a valid JSON object with the keys:\n"
                 '  "safety": string\n'
                 '  "efficacy": string\n'
+                '  "licensing": string\n'
                 '  "milestones": string\n'
                 '  "citations": string\n'
-                "No explanation, no other text."
+                "Respond with valid JSON only. No explanation, no other text."
             )
             fallback_system = (
                 "You are a data extraction assistant. Output only valid JSON."
@@ -520,6 +590,9 @@ class AssetResearchAgent:
                     res_dict.get("efficacy")
                     or "Key efficacy data not found in search results."
                 )
+                licensing = (
+                    res_dict.get("licensing") or "Licensing status pending/unknown."
+                )
                 milestones = (
                     res_dict.get("milestones")
                     or "Next clinical readouts/milestones pending."
@@ -531,6 +604,7 @@ class AssetResearchAgent:
                         asset_name,
                         safety,
                         efficacy,
+                        licensing,
                         milestones,
                         citations,
                         self.asset_config,
@@ -545,6 +619,7 @@ class AssetResearchAgent:
                         asset_name,
                         "Safety profile query completed; details pending synthesis.",
                         "Efficacy query completed; details pending synthesis.",
+                        "Licensing status query completed; details pending synthesis.",
                         "Milestones query completed; details pending synthesis.",
                         "N/A",
                         self.asset_config,
@@ -566,8 +641,12 @@ class AssetResearchAgent:
             "## Execution History",
             "",
         ]
-        for hist_item in history:
-            log_content.append(hist_item)
+        for h_turn in history_turns:
+            log_content.append(f"### Turn {h_turn['number']}")
+            log_content.append(f"**Instructions**: {h_turn['instructions']}")
+            log_content.append(f"**Agent Response**:\n{h_turn['response']}")
+            if "tool_result" in h_turn:
+                log_content.append(f"**Tool Result**:\n{h_turn['tool_result']}")
             log_content.append("\n---\n")
 
         log_file.write_text("\n".join(log_content), encoding="utf-8")

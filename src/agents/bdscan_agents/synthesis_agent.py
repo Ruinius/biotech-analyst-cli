@@ -65,7 +65,7 @@ class SynthesisAgent:
 
         logs_summary = "\n".join(research_logs)
 
-        history = []
+        history_turns = []
         turn_budget = 10
 
         system_instruction = (
@@ -86,38 +86,67 @@ class SynthesisAgent:
         for turn in range(1, turn_budget + 1):
             formatting.print_info(f"  Synthesis Turn {turn}/{turn_budget}...")
 
-            prompt = (
-                f"We are compiling the final broad scan report for '{target_name}'.\n"
-                f"Target Modality: {modality if modality else 'All'}\n\n"
-                f"Context Overview:\n{context_content}\n\n"
-                f"Research Logs Summary:\n{logs_summary}\n\n"
-                f"Turn {turn} details:\n"
-            )
-
             if turn == turn_budget:
-                prompt += (
+                current_instructions = (
                     "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST compile and write the complete, "
                     "detailed final strategic diligence report now, and end your response with the [FINALIZE] tag. Do NOT make any tool calls."
                 )
             elif turn == 1:
-                prompt += (
+                current_instructions = (
                     "Please analyze the pathway data and run a web_search query to verify recent market size, "
                     "regulatory policies, or competitor status for this class."
                 )
             else:
-                prompt += (
+                current_instructions = (
                     "Review the gathered details. If you have enough insights, write the final strategic diligence report "
                     "and output [FINALIZE]. Otherwise, execute another search query."
                 )
 
-            # Invoke LLM
-            full_prompt = prompt + "\n\nHistory:\n" + "\n".join(history)
+            # Construct prompt using XML tags to avoid LLM transcript-completion loops
+            prompt_parts = [
+                f"We are compiling the final broad scan report for '{target_name}'.",
+                f"Target Modality: {modality if modality else 'All'}\n",
+                f"Context Overview:\n{context_content}\n",
+                f"Research Logs Summary:\n{logs_summary}\n",
+            ]
+            if history_turns:
+                prompt_parts.append("<conversation_history>")
+                for h_turn in history_turns:
+                    prompt_parts.append(f'  <turn number="{h_turn["number"]}">')
+                    prompt_parts.append(
+                        f'    <instructions>{h_turn["instructions"]}</instructions>'
+                    )
+                    prompt_parts.append(
+                        f'    <response>{h_turn["response"]}</response>'
+                    )
+                    if "tool_result" in h_turn:
+                        prompt_parts.append(
+                            f'    <tool_result>{h_turn["tool_result"]}</tool_result>'
+                        )
+                    prompt_parts.append("  </turn>")
+                prompt_parts.append("</conversation_history>\n")
+
+            prompt_parts.append(f'<current_turn number="{turn}">')
+            prompt_parts.append(
+                f"  <instructions>{current_instructions}</instructions>"
+            )
+            prompt_parts.append("</current_turn>\n")
+            prompt_parts.append(
+                "Provide your response for the current turn. Output ONLY the response/tool call for the current turn. "
+                "Do NOT include any tags, conversational fillers, or future turns."
+            )
+
+            full_prompt = "\n".join(prompt_parts)
             response = self.client.query(full_prompt, system_instruction)
 
-            history.append(f"User: {prompt}")
-            history.append(f"Agent: {response}")
+            turn_record = {
+                "number": turn,
+                "instructions": current_instructions,
+                "response": response,
+            }
 
             if turn == turn_budget:
+                history_turns.append(turn_record)
                 break
 
             # Parse tool calls
@@ -136,12 +165,15 @@ class SynthesisAgent:
                         else f"{target_name} market size pricing oncology"
                     )
                     result = web_search(query)
-                    history.append(f"System Tool Result: {result}")
+                    turn_record["tool_result"] = result
                 else:
-                    history.append(f"System Tool Result: Unknown tool '{called_tool}'.")
+                    turn_record["tool_result"] = f"Unknown tool '{called_tool}'."
             else:
                 if "[FINALIZE]" in response:
+                    history_turns.append(turn_record)
                     break
+
+            history_turns.append(turn_record)
 
         # Generate report and table files in final_output/
         date_str = datetime.date.today().strftime("%Y%m%d")
@@ -159,13 +191,8 @@ class SynthesisAgent:
 
         # Robustly extract the agent's response containing the report
         report_text = ""
-        for hist_item in reversed(history):
-            if hist_item.startswith("Agent: "):
-                report_text = hist_item[len("Agent: ") :].strip()
-                break
-
-        if not report_text:
-            report_text = history[-1].replace("[FINALIZE]", "").strip()
+        if history_turns:
+            report_text = history_turns[-1]["response"].strip()
 
         # Clean up tags and tool call strings if present
         report_text = report_text.replace("[FINALIZE]", "").strip()

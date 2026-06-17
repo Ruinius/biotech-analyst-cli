@@ -478,7 +478,7 @@ class DatabaseSearchAgent:
         target_name: str,
         modality: str,
     ):
-        history = []
+        history_turns = []
         turn_budget = 4
         source_log_lines = []
 
@@ -511,34 +511,62 @@ class DatabaseSearchAgent:
         for turn in range(1, turn_budget + 1):
             formatting.print_info(f"  Turn {turn}/{turn_budget} for {source_name}...")
 
-            # Compile prompt
-            prompt = (
-                f"We are researching target: '{target_name}' using '{source_name}'.\n"
-                f"Available synonyms: {', '.join(synonyms)}\n"
-                f"Target Modality constraints: {modality if modality else 'None'}\n\n"
-                f"Turn {turn} details:\n"
-            )
             if turn == turn_budget:
-                prompt += (
+                current_instructions = (
                     "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST compile and write your final "
                     "comprehensive Markdown summary reviewing the findings now, and end your response with the [FINALIZE] tag. "
                     "Do NOT make any tool calls."
                 )
             elif turn == 1:
-                prompt += f"Please invoke the tool '{tool_name}' using one of the primary synonyms to fetch initial data."
+                current_instructions = f"Please invoke the tool '{tool_name}' using one of the primary synonyms to fetch initial data."
             else:
-                prompt += (
+                current_instructions = (
                     "Review the search results below. If there are gaps or spelling variations, run another search. "
                     "Otherwise, compile a structured research log and output [FINALIZE]."
                 )
 
-            # Invoke LLM
-            full_prompt = prompt + "\n\nHistory:\n" + "\n".join(history)
+            # Construct prompt using XML tags to avoid LLM transcript-completion loops
+            prompt_parts = [
+                f"We are researching target: '{target_name}' using '{source_name}'.",
+                f"Available synonyms: {', '.join(synonyms)}",
+                f"Target Modality constraints: {modality if modality else 'None'}\n",
+            ]
+            if history_turns:
+                prompt_parts.append("<conversation_history>")
+                for h_turn in history_turns:
+                    prompt_parts.append(f'  <turn number="{h_turn["number"]}">')
+                    prompt_parts.append(
+                        f'    <instructions>{h_turn["instructions"]}</instructions>'
+                    )
+                    prompt_parts.append(
+                        f'    <response>{h_turn["response"]}</response>'
+                    )
+                    if "tool_result" in h_turn:
+                        prompt_parts.append(
+                            f'    <tool_result>{h_turn["tool_result"]}</tool_result>'
+                        )
+                    prompt_parts.append("  </turn>")
+                prompt_parts.append("</conversation_history>\n")
+
+            prompt_parts.append(f'<current_turn number="{turn}">')
+            prompt_parts.append(
+                f"  <instructions>{current_instructions}</instructions>"
+            )
+            prompt_parts.append("</current_turn>\n")
+            prompt_parts.append(
+                "Provide your response for the current turn. Output ONLY the response/tool call for the current turn. "
+                "Do NOT include any tags, conversational fillers, or future turns."
+            )
+
+            full_prompt = "\n".join(prompt_parts)
             response = self.client.query(full_prompt, system_instruction)
 
-            # Track history
-            history.append(f"User: {prompt}")
-            history.append(f"Agent: {response}")
+            turn_record = {
+                "number": turn,
+                "instructions": current_instructions,
+                "response": response,
+            }
+
             source_log_lines.append(f"Turn {turn} Response:\n{response}")
 
             if turn == turn_budget:
@@ -567,6 +595,7 @@ class DatabaseSearchAgent:
                         "summary": clean_md[:200],
                     }
                 )
+                history_turns.append(turn_record)
                 break
 
             # Parse tool call
@@ -653,7 +682,7 @@ class DatabaseSearchAgent:
                 else:
                     result = f"Error: Tool '{called_tool}' is not recognized."
 
-                history.append(f"System Tool Result: {result}")
+                turn_record["tool_result"] = result
                 current_term_index += 1
             else:
                 # No tool call, did the agent finalize?
@@ -682,7 +711,10 @@ class DatabaseSearchAgent:
                             "summary": clean_md[:200],
                         }
                     )
+                    history_turns.append(turn_record)
                     break
+
+            history_turns.append(turn_record)
 
     def deterministic_merge(self):
         """Deterministic de-duplication and merging of Clinical Trials and CDE Scrapes.
