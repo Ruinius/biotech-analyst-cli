@@ -14,7 +14,6 @@ All tests mock LLM to avoid network calls.
 import json
 import re
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -92,9 +91,7 @@ def test_classify_empty_input_returns_empty_list(mock_llm_cls):
 def test_classify_deduplicates_case_insensitively(mock_llm_cls):
     from src.tools.classify_interventions import classify_interventions
 
-    mock_client = _make_llm_client_mock(
-        _make_llm_response(["Zolbetuximab"], [])
-    )
+    mock_client = _make_llm_client_mock(_make_llm_response(["Zolbetuximab"], []))
     mock_llm_cls.return_value = mock_client
 
     result = classify_interventions(
@@ -198,16 +195,15 @@ def test_hallucination_validator_rejects_missing_names(mock_llm_cls):
     """
     from src.tools.classify_interventions import classify_interventions
 
-    primary_response = json.dumps({
-        "assets": [
-            {"canonical_name": "Zolbetuximab", "aliases": ["FakeDrug999"]}
-        ],
-        "background": []
-    })
-    secondary_response = json.dumps({
-        "valid_assets": ["Zolbetuximab"],
-        "generic_or_modality": []
-    })
+    primary_response = json.dumps(
+        {
+            "assets": [{"canonical_name": "Zolbetuximab", "aliases": ["FakeDrug999"]}],
+            "background": [],
+        }
+    )
+    secondary_response = json.dumps(
+        {"valid_assets": ["Zolbetuximab"], "generic_or_modality": []}
+    )
     mock_client = MagicMock()
     mock_client.query.side_effect = [primary_response, secondary_response]
     mock_llm_cls.return_value = mock_client
@@ -235,18 +231,22 @@ def test_modality_filter_catches_generic_terms(mock_llm_cls):
     """
     from src.tools.classify_interventions import classify_interventions
 
-    primary_response = json.dumps({
-        "assets": [
-            {"canonical_name": "chemotherapy", "aliases": []},
-            {"canonical_name": "HER2", "aliases": []},
-            {"canonical_name": "Zolbetuximab", "aliases": []}
-        ],
-        "background": []
-    })
-    secondary_response = json.dumps({
-        "valid_assets": ["Zolbetuximab"],
-        "generic_or_modality": ["chemotherapy", "HER2"]
-    })
+    primary_response = json.dumps(
+        {
+            "assets": [
+                {"canonical_name": "chemotherapy", "aliases": []},
+                {"canonical_name": "HER2", "aliases": []},
+                {"canonical_name": "Zolbetuximab", "aliases": []},
+            ],
+            "background": [],
+        }
+    )
+    secondary_response = json.dumps(
+        {
+            "valid_assets": ["Zolbetuximab"],
+            "generic_or_modality": ["chemotherapy", "HER2"],
+        }
+    )
     mock_client = MagicMock()
     mock_client.query.side_effect = [primary_response, secondary_response]
     mock_llm_cls.return_value = mock_client
@@ -257,7 +257,10 @@ def test_modality_filter_catches_generic_terms(mock_llm_cls):
     )
 
     # §2 filter should remove generic terms
-    result_lower = {r.lower() if isinstance(r, str) else r.get("canonical_name", "").lower() for r in result}
+    result_lower = {
+        r.lower() if isinstance(r, str) else r.get("canonical_name", "").lower()
+        for r in result
+    }
     assert "chemotherapy" not in result_lower
     assert "her2" not in result_lower
     assert "zolbetuximab" in result_lower
@@ -276,22 +279,23 @@ def test_classify_returns_list_of_dicts_in_s2(mock_llm_cls):
     """
     from src.tools.classify_interventions import classify_interventions
 
-    primary_response = json.dumps({
-        "assets": [
-            {
-                "canonical_name": "Zolbetuximab",
-                "aliases": ["Vyloy"],
-                "modality": "Monoclonal Antibody",
-                "targets": ["CLDN18.2"],
-                "filtered_terms": []
-            }
-        ],
-        "background": []
-    })
-    secondary_response = json.dumps({
-        "valid_assets": ["Zolbetuximab"],
-        "generic_or_modality": []
-    })
+    primary_response = json.dumps(
+        {
+            "assets": [
+                {
+                    "canonical_name": "Zolbetuximab",
+                    "aliases": ["Vyloy"],
+                    "modality": "Monoclonal Antibody",
+                    "targets": ["CLDN18.2"],
+                    "filtered_terms": [],
+                }
+            ],
+            "background": [],
+        }
+    )
+    secondary_response = json.dumps(
+        {"valid_assets": ["Zolbetuximab"], "generic_or_modality": []}
+    )
     mock_client = MagicMock()
     mock_client.query.side_effect = [primary_response, secondary_response]
     mock_llm_cls.return_value = mock_client

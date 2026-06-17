@@ -17,8 +17,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 # Ensure project root is on path
 _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
@@ -35,7 +33,6 @@ from src.utils.landscape.reconciliation import (
     map_pubchem,
     reconcile_all_sources,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -221,15 +218,17 @@ def test_map_openfda_returns_dict():
 
 from src.tools.classify_interventions import AssetList
 
-MOCK_CLASSIFIED_ASSETS = AssetList([
-    {
-        "canonical_name": "Zolbetuximab",
-        "aliases": ["IMAB362", "Vyloy", "佐妥昔单抗"],
-        "modality": "Monoclonal Antibody",
-        "targets": ["Claudin 18.2"],
-        "filtered_terms": []
-    }
-])
+MOCK_CLASSIFIED_ASSETS = AssetList(
+    [
+        {
+            "canonical_name": "Zolbetuximab",
+            "aliases": ["IMAB362", "Vyloy", "佐妥昔单抗"],
+            "modality": "Monoclonal Antibody",
+            "targets": ["Claudin 18.2"],
+            "filtered_terms": [],
+        }
+    ]
+)
 
 
 def _write_fixture_files(db_dir: Path, folder_safe_name: str):
@@ -295,7 +294,9 @@ def test_reconcile_canonical_asset_in_output(mock_classify):
 
         reconcile_all_sources(target_dir, folder_safe_name)
 
-        reconciled = json.loads((db_dir / "reconciled.json").read_text(encoding="utf-8"))
+        reconciled = json.loads(
+            (db_dir / "reconciled.json").read_text(encoding="utf-8")
+        )
 
         # At least one canonical asset should be present
         assert len(reconciled) >= 1
@@ -322,7 +323,9 @@ def test_reconcile_ct_trial_assigned(mock_classify):
 
         reconcile_all_sources(target_dir, folder_safe_name)
 
-        reconciled = json.loads((db_dir / "reconciled.json").read_text(encoding="utf-8"))
+        reconciled = json.loads(
+            (db_dir / "reconciled.json").read_text(encoding="utf-8")
+        )
 
         # Find canonical entry and check ClinicalTrials record
         for entry in reconciled.values():
@@ -335,7 +338,10 @@ def test_reconcile_ct_trial_assigned(mock_classify):
         # If not found via trials, that's OK if the entry exists — just check CDE
         # (alias grouping may vary based on LLM mock)
         china_found = any(
-            any(t.get("id") == "CTR20182245" for t in e.get("trials", {}).get("china_cde", []))
+            any(
+                t.get("id") == "CTR20182245"
+                for t in e.get("trials", {}).get("china_cde", [])
+            )
             for e in reconciled.values()
         )
         assert china_found or len(reconciled) >= 1
@@ -344,15 +350,17 @@ def test_reconcile_ct_trial_assigned(mock_classify):
 @patch("src.tools.classify_interventions.classify_interventions")
 def test_reconcile_log_has_background_count(mock_classify):
     # classify_interventions returns only Zolbetuximab — everything else is background
-    mock_classify.return_value = AssetList([
-        {
-            "canonical_name": "Zolbetuximab",
-            "aliases": [],
-            "modality": "Monoclonal Antibody",
-            "targets": ["Claudin 18.2"],
-            "filtered_terms": []
-        }
-    ])
+    mock_classify.return_value = AssetList(
+        [
+            {
+                "canonical_name": "Zolbetuximab",
+                "aliases": [],
+                "modality": "Monoclonal Antibody",
+                "targets": ["Claudin 18.2"],
+                "filtered_terms": [],
+            }
+        ]
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         target_dir = Path(tmpdir)
@@ -364,7 +372,9 @@ def test_reconcile_log_has_background_count(mock_classify):
 
         reconcile_all_sources(target_dir, folder_safe_name)
 
-        log = json.loads((db_dir / "reconciliation_log.json").read_text(encoding="utf-8"))
+        log = json.loads(
+            (db_dir / "reconciliation_log.json").read_text(encoding="utf-8")
+        )
         # Background terms should be logged (not silently discarded)
         assert "background_terms" in log
         assert "total_records_processed" in log

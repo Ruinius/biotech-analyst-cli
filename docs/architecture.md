@@ -100,6 +100,6 @@ biotech-analyst-cli/
 
 To guarantee robust operations during high-frequency agent execution, the `LLMClient` incorporates the following features:
 1. **Thread-Safe Sequential Queue:** Every LLM call is routed through a global module-level FIFO queue processed sequentially by a daemon worker thread. This prevents race conditions and LLM service overloading. Under Pytest execution, a synchronous lock-based mechanism is used to ensure compatibility with unit test mocks.
-2. **Dual-Level Retry & Backoff:** 
+2. **Dual-Level Retry & Backoff:**
    - **Connection Level:** Retries on connection timeouts or network drops (`httpx.RequestError`) up to 3 times, using exponential backoff (1.0s base, 2.0x multiplier).
    - **LLM Level:** Retries on transient API/server errors (`httpx.HTTPStatusError` with codes 429, 500, 502, 503, 504) up to 5 times, using exponential backoff (2.0s base, 2.0x multiplier). Fatal client errors (e.g. 400, 401, 403, 404) fail immediately.

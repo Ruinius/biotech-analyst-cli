@@ -10,13 +10,9 @@ Verifies:
 All tests use local fixtures — no LLM or network calls.
 """
 
-import json
-import os
 import sys
 import tempfile
 from pathlib import Path
-
-import pytest
 
 # Ensure project root is on path
 _root = Path(__file__).parent.parent
@@ -41,23 +37,27 @@ def test_import_config_builder():
     # config_builder imports classify_interventions from src.tools
     # We just want to verify the import chain resolves
     import importlib
+
     spec = importlib.util.find_spec("src.utils.landscape.config_builder")
     assert spec is not None
 
 
 def test_import_table_builder():
     import importlib
+
     spec = importlib.util.find_spec("src.utils.landscape.table_builder")
     assert spec is not None
 
 
 def test_import_reconciliation():
     from src.utils.landscape import reconciliation  # noqa: F401
+
     assert hasattr(reconciliation, "reconcile_all_sources")
 
 
 def test_import_classify_interventions_tool():
     import importlib
+
     spec = importlib.util.find_spec("src.tools.classify_interventions")
     assert spec is not None
 
@@ -65,16 +65,32 @@ def test_import_classify_interventions_tool():
 def test_shim_reexports():
     """The generate_landscape_table.py shim must re-export all key symbols."""
     import importlib
+
     shim = importlib.import_module("src.utils.generate_landscape_table")
     required_symbols = [
-        "clean_sponsor", "matches_drug", "parse_ct_phase", "parse_text_phase",
-        "detect_formulation", "parse_asset_and_aliases", "clean_cell_to_name",
-        "normalize_drug_name", "_name_priority",
-        "parse_existing_report", "discover_config", "merge_config_duplicates",
-        "_strip_md", "md_table_to_text_table", "md_table_to_csv",
-        "build_landscape_table", "classify_interventions",
-        "CT_ACTIVE", "CT_COMPLETED", "CT_DISCONTINUED",
-        "CDE_ACTIVE", "CDE_COMPLETED", "CDE_DISCONTINUED",
+        "clean_sponsor",
+        "matches_drug",
+        "parse_ct_phase",
+        "parse_text_phase",
+        "detect_formulation",
+        "parse_asset_and_aliases",
+        "clean_cell_to_name",
+        "normalize_drug_name",
+        "_name_priority",
+        "parse_existing_report",
+        "discover_config",
+        "merge_config_duplicates",
+        "_strip_md",
+        "md_table_to_text_table",
+        "md_table_to_csv",
+        "build_landscape_table",
+        "classify_interventions",
+        "CT_ACTIVE",
+        "CT_COMPLETED",
+        "CT_DISCONTINUED",
+        "CDE_ACTIVE",
+        "CDE_COMPLETED",
+        "CDE_DISCONTINUED",
     ]
     for sym in required_symbols:
         assert hasattr(shim, sym), f"Shim missing symbol: {sym}"
@@ -87,6 +103,7 @@ def test_shim_reexports():
 
 def test_clean_sponsor_strips_suffixes():
     from src.utils.landscape.table_formatters import clean_sponsor
+
     assert clean_sponsor("AstraZeneca Pharmaceuticals") == "AstraZeneca"
     assert clean_sponsor("BioNTech SE") == "BioNTech SE"
     assert clean_sponsor("N/A") == ""
@@ -96,6 +113,7 @@ def test_clean_sponsor_strips_suffixes():
 
 def test_parse_ct_phase_basic():
     from src.utils.landscape.table_formatters import parse_ct_phase
+
     assert parse_ct_phase(["PHASE3"]) == ("Phase 3", 3.0)
     assert parse_ct_phase(["PHASE1", "PHASE2"]) == ("Phase 1/2", 1.5)
     assert parse_ct_phase([]) == ("N/A", 0)
@@ -104,6 +122,7 @@ def test_parse_ct_phase_basic():
 
 def test_parse_text_phase():
     from src.utils.landscape.table_formatters import parse_text_phase
+
     assert parse_text_phase("Phase 3 clinical trial")[0] == "Phase 3"
     assert parse_text_phase("iii期临床试验")[0] == "Phase 3"
     # Phase 2 text with i/ii combo → Phase 1/2
@@ -115,6 +134,7 @@ def test_parse_text_phase():
 
 def test_normalize_drug_name():
     from src.utils.landscape.table_formatters import normalize_drug_name
+
     assert normalize_drug_name("Zolbetuximab") == "zolbetuximab"
     assert normalize_drug_name("AMG-910") == "amg910"
     assert normalize_drug_name("SHR A1904") == "shra1904"
@@ -123,6 +143,7 @@ def test_normalize_drug_name():
 
 def test_parse_asset_and_aliases_bold_primary():
     from src.utils.landscape.table_formatters import parse_asset_and_aliases
+
     cell = "**Zolbetuximab**<br>*( Vyloy / IMAB362 )*"
     primary, aliases = parse_asset_and_aliases(cell)
     assert primary == "Zolbetuximab"
@@ -132,6 +153,7 @@ def test_parse_asset_and_aliases_bold_primary():
 
 def test_parse_asset_and_aliases_filters_modalities():
     from src.utils.landscape.table_formatters import parse_asset_and_aliases
+
     cell = "**TST001**<br>*( Chemotherapy / HER2 )*"
     primary, aliases = parse_asset_and_aliases(cell)
     assert primary == "TST001"
@@ -144,6 +166,7 @@ def test_parse_asset_and_aliases_filters_modalities():
 
 def test_matches_drug():
     from src.utils.landscape.table_formatters import matches_drug
+
     assert matches_drug("Zolbetuximab phase 3 trial", ["Zolbetuximab", "Vyloy"])
     assert matches_drug("Vyloy approval", ["Zolbetuximab", "Vyloy"])
     assert not matches_drug("pembrolizumab study", ["Zolbetuximab", "Vyloy"])
@@ -152,7 +175,10 @@ def test_matches_drug():
 
 def test_detect_formulation():
     from src.utils.landscape.table_formatters import detect_formulation
-    forms = detect_formulation(["IV infusion intravenous weekly", "subcutaneous injection"])
+
+    forms = detect_formulation(
+        ["IV infusion intravenous weekly", "subcutaneous injection"]
+    )
     assert "Intravenous" in forms
     assert "Subcutaneous" in forms
     assert detect_formulation([]) == []
@@ -160,6 +186,7 @@ def test_detect_formulation():
 
 def test_name_priority_ordering():
     from src.utils.landscape.table_formatters import _name_priority
+
     # Alphanumeric code has highest priority (lowest sort value)
     code_key = _name_priority("AMG910")
     usan_key = _name_priority("zolbetuximab")
@@ -184,6 +211,7 @@ SAMPLE_MD_TABLE = """\
 
 def test_md_table_to_text_table_returns_string():
     from src.utils.landscape.exporters import md_table_to_text_table
+
     result = md_table_to_text_table(SAMPLE_MD_TABLE)
     assert isinstance(result, str)
     assert "Zolbetuximab" in result
@@ -192,6 +220,7 @@ def test_md_table_to_text_table_returns_string():
 
 def test_md_table_to_text_table_alignment():
     from src.utils.landscape.exporters import md_table_to_text_table
+
     result = md_table_to_text_table(SAMPLE_MD_TABLE)
     lines = [l for l in result.splitlines() if l.strip().startswith("|")]
     # All data lines should have the same number of pipe delimiters
@@ -201,6 +230,7 @@ def test_md_table_to_text_table_alignment():
 
 def test_md_table_to_csv_round_trip():
     from src.utils.landscape.exporters import md_table_to_csv
+
     result = md_table_to_csv(SAMPLE_MD_TABLE)
     assert "Zolbetuximab" in result
     assert "TST001" in result
@@ -210,6 +240,7 @@ def test_md_table_to_csv_round_trip():
 
 def test_strip_md_removes_formatting():
     from src.utils.landscape.exporters import _strip_md
+
     assert _strip_md("**bold**") == "bold"
     assert _strip_md("[link](http://example.com)") == "link"
     assert _strip_md("text<br/>more") == "text / more"
@@ -229,11 +260,17 @@ FIXTURE_CT_DATA = {
                 "nctId": "NCT03504397",
             },
             "statusModule": {"overallStatus": "COMPLETED"},
-            "sponsorCollaboratorsModule": {"leadSponsor": {"name": "Astellas Pharma Inc."}},
+            "sponsorCollaboratorsModule": {
+                "leadSponsor": {"name": "Astellas Pharma Inc."}
+            },
             "designModule": {"phases": ["PHASE3"]},
             "armsInterventionsModule": {
                 "interventions": [
-                    {"type": "BIOLOGICAL", "name": "Zolbetuximab", "otherNames": ["IMAB362"]}
+                    {
+                        "type": "BIOLOGICAL",
+                        "name": "Zolbetuximab",
+                        "otherNames": ["IMAB362"],
+                    }
                 ]
             },
             "descriptionModule": {"briefSummary": "", "detailedDescription": ""},
@@ -243,9 +280,7 @@ FIXTURE_CT_DATA = {
 
 FIXTURE_CHINA_DATA = []
 
-FIXTURE_CONFIG = {
-    "Zolbetuximab": {"aliases": ["IMAB362", "Vyloy"]}
-}
+FIXTURE_CONFIG = {"Zolbetuximab": {"aliases": ["IMAB362", "Vyloy"]}}
 
 FIXTURE_EXISTING_META = {}
 

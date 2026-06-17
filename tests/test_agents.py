@@ -547,7 +547,9 @@ def test_classify_interventions_deduplicates_input(mock_query):
     )
 
     # LLM should have been called with only 2 unique entries in the first call (primary classification)
-    first_call_args = mock_query.call_args_list[0][0][0]  # First call positional arg (prompt)
+    first_call_args = mock_query.call_args_list[0][0][
+        0
+    ]  # First call positional arg (prompt)
     import json as _json2
 
     # Find the JSON array in the prompt after 'Input names:'

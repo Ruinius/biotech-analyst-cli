@@ -32,4 +32,3 @@ This file contains accumulated learnings, heuristics, and constraints gathered b
 - When a search returns no results, reduce the query length or remove special characters before retrying.
 - For drugs developed by multiple institutions, pick the lead sponsor or one major hospital as the developer in the search.
 - Include the drug’s target class (e.g., “ADC targeting CLDN18.2”) to distinguish it from unrelated compounds with similar codes.
-

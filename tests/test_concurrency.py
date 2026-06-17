@@ -11,9 +11,8 @@ import json
 import sys
 import tempfile
 import threading
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -22,8 +21,8 @@ _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
 from src.agents.bdscan_agents.asset_research_agent import AssetResearchAgent
+from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
 from src.core.config import Settings
 
 
@@ -36,16 +35,24 @@ def settings():
     )
 
 
-@patch("src.agents.bdscan_agents.db_search_agent.DatabaseSearchAgent.run_loop_for_source")
-@patch("src.agents.bdscan_agents.db_search_agent.DatabaseSearchAgent.deterministic_merge")
-def test_db_search_concurrency_with_partial_failure(mock_merge, mock_run_loop, settings):
+@patch(
+    "src.agents.bdscan_agents.db_search_agent.DatabaseSearchAgent.run_loop_for_source"
+)
+@patch(
+    "src.agents.bdscan_agents.db_search_agent.DatabaseSearchAgent.deterministic_merge"
+)
+def test_db_search_concurrency_with_partial_failure(
+    mock_merge, mock_run_loop, settings
+):
     """
     Verify that the search pipeline continues if non-core sources fail,
     but fails if both core sources fail.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         target_dir = Path(tmpdir)
-        db_agent = DatabaseSearchAgent(settings, "CLDN18_2_Scan", target_dir, sequential=False)
+        db_agent = DatabaseSearchAgent(
+            settings, "CLDN18_2_Scan", target_dir, sequential=False
+        )
 
         # 1. Partial failure scenario: non-core source fails
         def mock_run(idx, source_name, tool_name, synonyms, target_name, modality):
@@ -63,7 +70,9 @@ def test_db_search_concurrency_with_partial_failure(mock_merge, mock_run_loop, s
         mock_run_loop.reset_mock()
         mock_merge.reset_mock()
 
-        def mock_run_core_fail(idx, source_name, tool_name, synonyms, target_name, modality):
+        def mock_run_core_fail(
+            idx, source_name, tool_name, synonyms, target_name, modality
+        ):
             if source_name in ("ClinicalTrials.gov", "NMPA CDE Direct Search"):
                 raise RuntimeError("Core Database Unavailable!")
             return
@@ -74,7 +83,9 @@ def test_db_search_concurrency_with_partial_failure(mock_merge, mock_run_loop, s
             db_agent.execute_search_pipeline("CLDN18.2", ["CLDN18.2"], ["CLDN18.2"])
 
 
-@patch("src.agents.bdscan_agents.asset_research_agent.AssetResearchAgent.run_loop_for_asset")
+@patch(
+    "src.agents.bdscan_agents.asset_research_agent.AssetResearchAgent.run_loop_for_asset"
+)
 def test_asset_research_duplicate_protection(mock_run_loop, settings):
     """
     Verify that duplicate assets (aliases) are skipped and linked to parent
@@ -82,7 +93,7 @@ def test_asset_research_duplicate_protection(mock_run_loop, settings):
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         target_dir = Path(tmpdir)
-        
+
         # Setup folders
         research_dir = target_dir / "research"
         research_dir.mkdir(parents=True)
@@ -105,10 +116,12 @@ def test_asset_research_duplicate_protection(mock_run_loop, settings):
                 "aliases": ["IMAB362", "Vyloy"],
                 "modality": "Monoclonal Antibody",
                 "targets": ["CLDN18.2"],
-                "filtered_terms": []
+                "filtered_terms": [],
             }
         }
-        (db_json_dir / "asset_config.json").write_text(json.dumps(asset_config), encoding="utf-8")
+        (db_json_dir / "asset_config.json").write_text(
+            json.dumps(asset_config), encoding="utf-8"
+        )
 
         agent = AssetResearchAgent(settings, target_dir)
 
@@ -153,7 +166,7 @@ def test_asset_research_registry_lock_prevents_race(settings):
 
         # Simulate two concurrent threads discovering aliases
         errors = []
-        
+
         def thread_1_work():
             try:
                 # Thread 1 registers canonical Zolbetuximab
