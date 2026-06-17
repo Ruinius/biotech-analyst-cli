@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 
 from src.agents.bdscan_agents.asset_research_agent import AssetResearchAgent
-from src.agents.bdscan_agents.compile_landscape import compile_landscape_table
 from src.agents.bdscan_agents.context_agent import generate_context
 from src.agents.bdscan_agents.curator_agent import CuratorAgent
 from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
+from src.agents.bdscan_agents.landscape_compiler_agent import compile_landscape_table
 from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
 from src.utils import formatting

@@ -22,7 +22,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
   - Refactor registry querying utilities under `src/utils/` (like ClinicalTrials, ANZCTR, PubChem, openFDA, CDE scraper, etc.) into reusable tools.
   - Implement a flexible 4-turn state search loop sequentially for the eight databases. Rather than rigid turn boundaries, allow the agent to review results, dynamically generate new search terms/queries, and paginate, ending with a finalization step.
   - Implement a deterministic append/de-duplicate utility script to compile raw registry data into source tables, ensuring 100% data integrity with no LLM rewriting of trial data.
-- [x] **Landscape Table Compiler (`compile_landscape.py`):**
+- [x] **Landscape Compiler Agent (`landscape_compiler_agent.py`):**
   - Create the consolidation utility to merge the 8 source-specific tables into a single master landscape table under `research/` (one unique asset per row, merging targets, sponsors, indications, trials, formulations).
 - [x] **Asset Research Agent (`asset_research_agent.py`):**
   - Implement the 4-turn row-specific web research loop.
@@ -82,19 +82,5 @@ Next steps:
 - [x] Segregate AI Agent tools and general utility scripts into separate folders:
   - Move all database query utilities, fetchers, and summarizers (e.g., ClinicalTrials, PubChem, openFDA, China CDE) into a dedicated `src/tools/` or `src/agents/tools/` folder to serve as the agent registry.
   - Keep `src/utils/` focused exclusively on non-agent scripts (e.g., PDF compilation, CLI formatting, ASCII art rendering, test suites).
-
-- [ ] Implement database result reconciliation to merge all 8 database search results (registries, patents, conferences, PubChem, openFDA) into a unified, asset-centric JSON structure.
-  - Define a nested JSON schema under `tmp/` (keyed by canonical asset names, containing sub-fields/lists for matching trial records, patents, conference abstracts, PubChem bioassays, and openFDA safety labels).
-  - Implement a name/alias reconciliation mapper that scans raw search outputs in `tmp/` and assigns matched records to their respective assets.
-  - Run the reconciler in the orchestrator pipeline right after the database search phase finishes.
-
-- [ ] Eliminate all dynamic cell-parsing alias extraction heuristics. Transition to using an LLM-based agent/parser to dynamically identify, reconcile, and validate canonical assets and their drug synonyms, removing all regex-based string extraction and subsequent heuristic filters.
-  - **How it is done**: Pass raw cell content strings (e.g., `**Zolbetuximab**<br>*(Vyloy / Chemotherapy / HER2)*`) to an LLM query that extracts and returns a structured JSON containing only valid drug synonyms, brand names, and codenames while filtering out modalities and other targets.
-  - **Where the agent fits**: Introduce a new standalone agent under `src/agents/bdscan_agents/alias_resolver_agent.py`. The orchestrator will invoke this agent after the database search phase to resolve raw registry names and existing reports into a clean, canonical asset/alias mapping config (which is then passed to the landscape generator), keeping the utils code clean and purely functional.
-
-- [ ] Refactor and modularize the monolithic `generate_landscape_table.py` script:
-  - Split cell cleaners, formatting helpers, and phase calculators (e.g., `clean_sponsor`, `parse_ct_phase`, `detect_formulation`) into a dedicated `src/utils/landscape/formatters.py` submodule.
-  - Split table exporters and Unicode box-drawing/CSV conversion functions (`md_table_to_text_table` (remove this one, this is legacy code.), `md_table_to_csv`) into `src/utils/landscape/exporters.py`.
-  - Split the main landscape compilation loops and registry processing logic into `src/utils/landscape/compiler.py`, leaving `generate_landscape_table.py` as a lightweight, clean helper script/module that orchestrates formatting and compilation by importing these submodules.
-
-- build concurrency for the database search and web search. Need to be careful that the next step in the pipeline waits for all the previous agents to finish working. Also, probably want to limit the concurrency to 8-10. Also need to figure how to handle situations where one agent returns a row is duplicate, but another agent already started on it. Probably some waste, but just need to make sure it doesn't cause error.
+- [ ] **Broad Scan Pipeline Refactoring:**
+  - Detailed design, directory restructuring, and implementation plans for the four major refactoring tasks (Database Reconciliation, LLM Synonym Extraction, Table Module Separation, and Concurrency) are documented in [bdscan_refactor.md](file:///f:/AIML%20projects/biotech-analyst-cli/docs/bdscan_refactor.md).

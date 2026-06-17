@@ -6,7 +6,7 @@ This specification details the agentic refactor for the `ba bdscan` pipeline. Th
 
 ## 1. Pipeline Architecture & Orchestration
 
-The pipeline is managed by a central **BD Scan Orchestrator** (`src/core/bdscan_orchestrator.py`) which sequences five distinct agents and one data-compiling utility script.
+The pipeline is managed by a central **BD Scan Orchestrator** (`src/core/bdscan_orchestrator.py`) which sequences six distinct agents.
 COMMENT: move bdscan and deepdive out of main and into their separate files in core/
 COMMENT: for bdscan and deepdive, leave a bdscan_orchestrator and deepdive_orchestrator in core/ and create bdscan_agents and deepdive_agents folders to house each individual agent
 
@@ -23,7 +23,7 @@ graph TD
     DbSearchLogs -->|4. Curate| Curator[Curator Agent]
     Curator -->|Updates ##database-search| GlobalLearning[learning.md in src/agents/]
 
-    SourceTables -->|5. Run Script| Compiler[Landscape Table Compiler]
+    SourceTables -->|5. Invoke Agent| Compiler[Landscape Compiler Agent]
     Compiler -->|Combines into| BigTable[Big Table in research/]
 
     BigTable -->|6. Run 4-Turn per Row| AssetResearch[Asset Research Agent]
@@ -41,7 +41,7 @@ graph TD
 
 ## 2. Agent Configurations
 
-### Agent 1: Context Agent (`src/agents/bdscan/context_agent.py`)
+### Agent 1: Context Agent (`src/agents/bdscan_agents/context_agent.py`)
 
 - **Mode:** One-turn generation agent.
 - **Role:** Analyzes the user's initial target biological pathway/molecule class.
@@ -53,7 +53,7 @@ graph TD
 
 ---
 
-### Agent 2: Database Search Agent (`src/agents/bdscan/db_search_agent.py`)
+### Agent 2: Database Search Agent (`src/agents/bdscan_agents/db_search_agent.py`)
 
 - **Mode:** Structured 4-turn loop agent, run **sequentially** for each of the eight database/registry fetching sources.
 - **Turn Budget & State Loop:**
@@ -68,7 +68,7 @@ graph TD
 
 ---
 
-### Utility Script: Landscape Table Compiler (`src/agents/bdscan/compile_landscape.py`)
+### Agent 3: Landscape Compiler Agent (`src/agents/bdscan_agents/landscape_compiler_agent.py`)
 
 - **Objective:** Synthesizes the 8 source-specific tables created by the Database Search Agent into a single master landscape table.
 - **Formatting Rules:**
@@ -78,7 +78,7 @@ graph TD
 
 ---
 
-### Agent 4: Asset Research Agent (`src/agents/bdscan/asset_research_agent.py`)
+### Agent 4: Asset Research Agent (`src/agents/bdscan_agents/asset_research_agent.py`)
 
 - **Mode:** Structured 4-turn loop agent, executed **sequentially** for each asset (row) in the big table.
 - **Tools Available:**
@@ -95,7 +95,7 @@ graph TD
 
 ---
 
-### Agent 5: Final Synthesis & Report Agent (`src/agents/bdscan/synthesis_agent.py`)
+### Agent 5: Final Synthesis & Report Agent (`src/agents/bdscan_agents/synthesis_agent.py`)
 
 - **Mode:** 10-turn strategic synthesis agent.
 - **Tools Available:**
@@ -109,7 +109,7 @@ graph TD
 
 ---
 
-### Curator Agent (`src/agents/bdscan/curator_agent.py`)
+### Curator Agent (`src/agents/bdscan_agents/curator_agent.py`)
 
 - **Mode:** Stage-end curation agent.
 - **Objective:** Aggregates logs from the database search and web search runs to update rules and search lessons.
