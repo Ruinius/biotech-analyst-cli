@@ -204,6 +204,7 @@ All classification logic resides in **`src/tools/classify_interventions.py`**, w
 1. **Provenance Trace Verification:** Confirms that every alias and canonical name in the LLM output is contained verbatim (case-insensitive) in the original raw fields of the source records. Hallucinated terms are discarded.
 2. **LLM-Based Modality/Target Filter:** A secondary validation LLM call reviews the `"asset"` list and filters out modal terms (e.g. `"HER2"`, `"immunotherapy"`, `"chemotherapy"`) that slipped past the primary classifier.
 3. **Report Audit:** `validate_report.py` audits the generated `asset_config.json` against the raw JSONs under `database_json/` before proceeding to report synthesis.
+4. **Global Synonym Resolution:** Run a final global consolidation pass using the LLM over all batch-classified assets to resolve cross-batch synonym duplicates (e.g., merging IMC002 and LM-302 if they were processed in different batches). Provenance validation and a data-loss safeguard are applied to ensure no candidate assets are dropped.
 
 ---
 

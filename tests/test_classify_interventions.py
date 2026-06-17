@@ -158,26 +158,48 @@ def test_classify_strips_markdown_fences(mock_llm_cls):
 @patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
 def test_classify_batch_size_respected(mock_llm_cls):
     """classify_interventions must call LLM once per batch of batch_size names."""
+    from unittest.mock import MagicMock
+
     from src.agents.bdscan_agents.intervention_classifier_agent import (
         classify_interventions,
     )
 
     mock_client = MagicMock()
-    # Return all as assets
-    mock_client.query.side_effect = lambda prompt, system, *args, **kwargs: json.dumps(
-        {
-            "asset": re.findall(r'"([A-Za-z0-9\-]+)"', prompt.split("Input names:")[1]),
-            "background": [],
-        }
-    )
+
+    def side_effect(prompt, system, *args, **kwargs):
+        if "Input names:" in prompt:
+            return json.dumps(
+                {
+                    "asset": re.findall(
+                        r'"([A-Za-z0-9\-]+)"', prompt.split("Input names:")[1]
+                    ),
+                    "background": [],
+                }
+            )
+        elif "Candidate names:" in prompt:
+            return json.dumps(
+                {
+                    "valid_assets": re.findall(
+                        r'"([A-Za-z0-9\-]+)"', prompt.split("Candidate names:")[1]
+                    ),
+                    "generic_or_modality": [],
+                }
+            )
+        elif "Input assets:" in prompt:
+            match = re.search(r"Input assets:\s*(\[.*?\])", prompt, re.DOTALL)
+            assets_data = json.loads(match.group(1)) if match else []
+            return json.dumps({"consolidated_assets": assets_data})
+        return "{}"
+
+    mock_client.query.side_effect = side_effect
     mock_llm_cls.return_value = mock_client
 
     # 31 names with batch_size=30 → should require 2 LLM calls
     names = [f"Drug{i:03d}" for i in range(31)]
     classify_interventions(names, target_name="CLDN18.2", batch_size=30)
 
-    # 2 batches: each batch makes 1 primary call and 1 secondary call (since they returned assets) = 4 calls total
-    assert mock_client.query.call_count == 4
+    # 2 batches: each batch makes 1 primary call and 1 secondary call (since they returned assets) = 4 calls, plus 1 global consolidation call = 5 calls total
+    assert mock_client.query.call_count == 5
 
 
 @patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
@@ -356,3 +378,189 @@ def test_classify_batch_size_param_controls_split(mock_llm_cls):
     # 10 names / 4 per batch = 3 batches (ceil). Each batch does 1 primary call
     # + 0 secondary calls (since no assets classified). So 3 calls.
     assert mock_client.query.call_count == 3
+
+
+# ---------------------------------------------------------------------------
+# 7. Global Synonym Resolution tests
+# ---------------------------------------------------------------------------
+
+
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
+def test_consolidate_synonyms_globally_happy_path(mock_llm_cls):
+    """Verify happy path consolidation where IMC002 and LM-302 are merged by the LLM."""
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        consolidate_synonyms_globally,
+    )
+
+    mock_client = MagicMock()
+    mock_client.query.return_value = json.dumps(
+        {
+            "consolidated_assets": [
+                {
+                    "canonical_name": "IMC002",
+                    "aliases": ["LM-302"],
+                    "modality": "ADC",
+                    "targets": ["CLDN18.2"],
+                }
+            ]
+        }
+    )
+    mock_llm_cls.return_value = mock_client
+
+    input_assets = [
+        {
+            "canonical_name": "IMC002",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+        {
+            "canonical_name": "LM-302",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+    ]
+
+    result = consolidate_synonyms_globally(input_assets, target_name="CLDN18.2")
+
+    assert len(result) == 1
+    entry = result[0]
+    assert entry["canonical_name"] == "IMC002"
+    assert entry["aliases"] == ["LM-302"]
+    assert entry["modality"] == "ADC"
+
+
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
+def test_consolidate_synonyms_globally_provenance_check(mock_llm_cls):
+    """Verify that hallucinated/uninvented names in the consolidated output are filtered out."""
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        consolidate_synonyms_globally,
+    )
+
+    mock_client = MagicMock()
+    # LLM hallucinates 'FakeDrug999' as an alias and 'AnotherFake' as canonical
+    mock_client.query.return_value = json.dumps(
+        {
+            "consolidated_assets": [
+                {
+                    "canonical_name": "IMC002",
+                    "aliases": ["LM-302", "FakeDrug999"],
+                    "modality": "ADC",
+                    "targets": ["CLDN18.2"],
+                },
+                {
+                    "canonical_name": "AnotherFake",
+                    "aliases": ["LM-302"],
+                    "modality": "ADC",
+                    "targets": ["CLDN18.2"],
+                },
+            ]
+        }
+    )
+    mock_llm_cls.return_value = mock_client
+
+    input_assets = [
+        {
+            "canonical_name": "IMC002",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+        {
+            "canonical_name": "LM-302",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+    ]
+
+    result = consolidate_synonyms_globally(input_assets, target_name="CLDN18.2")
+
+    assert any("FakeDrug999" not in a.get("aliases", []) for a in result)
+
+
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
+def test_consolidate_synonyms_globally_prevent_data_loss(mock_llm_cls):
+    """Verify that if the LLM drops an asset (e.g. Zolbetuximab), the safeguard adds it back."""
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        consolidate_synonyms_globally,
+    )
+
+    mock_client = MagicMock()
+    # LLM returns only IMC002 and completely forgets about Zolbetuximab
+    mock_client.query.return_value = json.dumps(
+        {
+            "consolidated_assets": [
+                {
+                    "canonical_name": "IMC002",
+                    "aliases": ["LM-302"],
+                    "modality": "ADC",
+                    "targets": ["CLDN18.2"],
+                }
+            ]
+        }
+    )
+    mock_llm_cls.return_value = mock_client
+
+    input_assets = [
+        {
+            "canonical_name": "IMC002",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+        {
+            "canonical_name": "LM-302",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+        {
+            "canonical_name": "Zolbetuximab",
+            "aliases": ["Vyloy"],
+            "modality": "Monoclonal Antibody",
+            "targets": ["CLDN18.2"],
+        },
+    ]
+
+    result = consolidate_synonyms_globally(input_assets, target_name="CLDN18.2")
+
+    # Zolbetuximab must have been added back by the safeguard
+    names = {a["canonical_name"] for a in result}
+    assert "IMC002" in names
+    assert "Zolbetuximab" in names
+
+
+@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
+def test_consolidate_synonyms_globally_llm_failure_fallback(mock_llm_cls):
+    """Verify that if the LLM call fails, we return the original unconsolidated assets list."""
+    from src.agents.bdscan_agents.intervention_classifier_agent import (
+        consolidate_synonyms_globally,
+    )
+
+    mock_client = MagicMock()
+    mock_client.query.side_effect = Exception("API Connection Timeout")
+    mock_llm_cls.return_value = mock_client
+
+    input_assets = [
+        {
+            "canonical_name": "IMC002",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+        {
+            "canonical_name": "LM-302",
+            "aliases": [],
+            "modality": "ADC",
+            "targets": ["CLDN18.2"],
+        },
+    ]
+
+    result = consolidate_synonyms_globally(input_assets, target_name="CLDN18.2")
+
+    # Result should be exactly the input_assets
+    assert len(result) == 2
+    assert result[0]["canonical_name"] == "IMC002"
+    assert result[1]["canonical_name"] == "LM-302"

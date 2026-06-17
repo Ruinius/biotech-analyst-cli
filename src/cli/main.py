@@ -524,7 +524,7 @@ def main_bdscan(
         raise typer.Exit(1)
 
     try:
-        pdf_out = run_bdscan_pipeline(
+        run_bdscan_pipeline(
             settings=settings,
             action=action,
             target_name=target_name,
@@ -538,17 +538,6 @@ def main_bdscan(
     except Exception as e:
         formatting.print_error(f"Pipeline execution failed: {e}")
         raise typer.Exit(1)
-
-    if sys.platform.startswith("win") and pdf_out.exists():
-        open_pdf = typer.confirm(
-            "Would you like to open the compiled PDF now?", default=True
-        )
-        if open_pdf:
-            try:
-                os.startfile(pdf_out)
-                formatting.print_success("PDF Reader launched.")
-            except Exception as e:
-                formatting.print_error(f"Failed to open PDF: {e}")
 
 
 @app.command("deepdive")

@@ -122,7 +122,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ## Next Steps / Bugs
 
 - [x] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", everything just says web search pending despite 110 web searches being completed. I suspect the web search agent does not have a reminder that it's on the final turn and needs to finalize. In fact, every agent needs this final turn reminder.
-- [ ] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", there are obvious duplicates, such as the two IMC002 and LM-302
+- [x] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", there are obvious duplicates, such as the two IMC002 and LM-302
 
 ## Future Ideas
 

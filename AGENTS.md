@@ -68,7 +68,7 @@ This file indexes the workspace structure and defines architectural rules/constr
 4. **No Silent Fallbacks**:
    - Avoid silent fallback strategies (like falling back to another provider or catching exceptions silently). Report errors to the user immediately.
 5. **Data Extraction & Tables**:
-   - Competitive landscape output in `generate_landscape_table.py` classifies pipeline assets using the batched LLM-based `classify_interventions()`. No hardcoded blocklists.
+   - Competitive landscape output in `generate_landscape_table.py` classifies pipeline assets using the batched LLM-based `classify_interventions()`, followed by a global synonym resolution pass. No hardcoded blocklists.
    - Ensure landscape tables and PDF reports are audited using `validate_report.py` to prevent hallucinated IDs or data omissions.
    - Maintain parameter backward-compatibility with `asset-pipeline-research` across scripts in `src/utils/`.
 6. **Testing Standards**:

@@ -601,7 +601,7 @@ def test_classify_interventions_happy_path(mock_query):
     assert "pembrolizumab" not in result
     assert "FOLFOX" not in result
     assert "Placebo" not in result
-    assert mock_query.call_count == 2
+    assert mock_query.call_count == 3
 
 
 @patch("src.services.llm_client.LLMClient.query")

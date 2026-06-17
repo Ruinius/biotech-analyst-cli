@@ -279,4 +279,180 @@ def classify_interventions(
 
         all_assets.extend(valid_assets_in_batch)
 
+    # Perform global synonym resolution if we have more than one asset
+    if len(all_assets) > 1:
+        all_assets = consolidate_synonyms_globally(
+            assets=all_assets,
+            target_name=target_name,
+            target_synonyms=target_synonyms,
+        )
+
     return all_assets
+
+
+def consolidate_synonyms_globally(
+    assets: list[dict],
+    target_name: str,
+    target_synonyms: list | None = None,
+) -> AssetList:
+    """
+    Consolidate duplicate/synonym assets globally using the LLM.
+    Guarantees no data loss of identified assets and applies a provenance check/hallucination filter.
+    """
+    if not assets or len(assets) <= 1:
+        return AssetList(assets)
+
+    synonyms = target_synonyms or []
+    synonyms_str = ", ".join(synonyms) if synonyms else target_name
+
+    # Prepare input list for LLM to keep the prompt clean and concise
+    input_assets_json = json.dumps(
+        [
+            {
+                "canonical_name": a["canonical_name"],
+                "aliases": a.get("aliases", []),
+                "modality": a.get("modality", "N/A"),
+                "targets": a.get("targets", [target_name]),
+            }
+            for a in assets
+        ],
+        ensure_ascii=False,
+    )
+
+    prompt = (
+        f"You are a biotech drug synonym consolidation expert.\n\n"
+        f"Research target: {target_name}\n"
+        f"Target synonyms: {synonyms_str}\n\n"
+        f"Below is a list of pipeline assets that were identified. Some of these assets are synonyms, alternative names, or laboratory codes for the same drug/molecule "
+        f"(for example, 'IMC002' and 'LM-302' are the same molecule; 'Zolbetuximab' and 'Vyloy' are the same molecule).\n\n"
+        f"Your task is to merge any duplicate/synonym assets together under a single canonical name.\n"
+        f"Keep the most standard/common name as the 'canonical_name', and list all other synonym names/codes in 'aliases'.\n"
+        f"Make sure to preserve/aggregate the correct modality and targets.\n\n"
+        f"Input assets:\n{input_assets_json}\n\n"
+        f"Respond ONLY with a valid JSON object with the key:\n"
+        f'  "consolidated_assets": a list of objects, one per consolidated asset, with the keys:\n'
+        f'     "canonical_name": string (most standard/common name)\n'
+        f'     "aliases": list of strings (all other synonym names/codes for this asset)\n'
+        f'     "modality": string (e.g. "Monoclonal Antibody", "ADC", "Small Molecule")\n'
+        f'     "targets": list of strings\n\n'
+        f"Every canonical name and alias in the input assets MUST be accounted for. Do not drop any valid asset. No explanations, no markdown fencing."
+    )
+
+    system_instruction = (
+        "You are an expert biotech asset consolidator. Output only valid JSON. "
+        "Consolidate multiple names/codes of the same drug/molecule into a single asset. "
+        "Do not invent any new names not present in the input. Keep all valid assets."
+    )
+
+    client = LLMClient()
+    try:
+        try:
+            response = client.query(prompt, system_instruction, stream=False)
+        except TypeError as e:
+            if "unexpected keyword argument" in str(e) and "stream" in str(e):
+                response = client.query(prompt, system_instruction)
+            else:
+                raise
+    except Exception as e:
+        print(
+            f"Warning: Global synonym consolidation LLM call failed ({e}). Returning unconsolidated list."
+        )
+        return AssetList(assets)
+
+    if (
+        not response
+        or response.startswith("Error:")
+        or response.startswith("Failed to call")
+    ):
+        print(
+            f"Warning: Global synonym consolidation LLM call failed. Response: {response}. Returning unconsolidated list."
+        )
+        return AssetList(assets)
+
+    # Strip markdown code fences if the LLM wrapped the output
+    clean_response = response.strip()
+    if clean_response.startswith("```"):
+        clean_response = re.sub(r"^```[a-z]*\n?", "", clean_response)
+        clean_response = re.sub(r"\n?```$", "", clean_response.strip())
+
+    try:
+        result = json.loads(clean_response)
+        raw_consolidated = result.get("consolidated_assets", [])
+    except Exception as exc:
+        print(
+            f"Warning: Failed to parse global consolidation JSON ({exc}). Returning unconsolidated list."
+        )
+        return AssetList(assets)
+
+    # 1. Track all valid input names to build a safe set for provenance check
+    input_names_lower = set()
+    for entry in assets:
+        input_names_lower.add(entry["canonical_name"].lower())
+        for a in entry.get("aliases", []):
+            input_names_lower.add(a.lower())
+
+    # Build a lookup map of original input assets to recover any fields if needed
+    name_to_original_asset = {}
+    for entry in assets:
+        name_to_original_asset[entry["canonical_name"].lower()] = entry
+        for a in entry.get("aliases", []):
+            name_to_original_asset[a.lower()] = entry
+
+    # 2. Hallucination Validator (Provenance check)
+    validated_assets = []
+    covered_names_lower = set()
+
+    for entry in raw_consolidated:
+        if not isinstance(entry, dict):
+            continue
+        canon = entry.get("canonical_name", "").strip()
+        aliases = [a.strip() for a in entry.get("aliases", []) if a.strip()]
+
+        # Filter aliases to only those in the original inputs
+        valid_aliases = [a for a in aliases if a.lower() in input_names_lower]
+
+        if canon.lower() in input_names_lower:
+            entry["aliases"] = valid_aliases
+            validated_assets.append(entry)
+            covered_names_lower.add(canon.lower())
+            for a in valid_aliases:
+                covered_names_lower.add(a.lower())
+        elif valid_aliases:
+            entry["canonical_name"] = valid_aliases[0]
+            entry["aliases"] = valid_aliases[1:]
+            validated_assets.append(entry)
+            covered_names_lower.add(valid_aliases[0].lower())
+            for a in valid_aliases[1:]:
+                covered_names_lower.add(a.lower())
+
+    # 3. Prevent Data Loss: Add back any input assets that were not covered by the LLM
+    for entry in assets:
+        canon_lower = entry["canonical_name"].lower()
+        if canon_lower not in covered_names_lower:
+            # Check if any of its aliases are covered. If not, add the whole asset entry back.
+            aliases_lower = {a.lower() for a in entry.get("aliases", [])}
+            if not aliases_lower.intersection(covered_names_lower):
+                validated_assets.append(entry)
+                covered_names_lower.add(canon_lower)
+                for a in entry.get("aliases", []):
+                    covered_names_lower.add(a.lower())
+
+    # Re-wrap in AssetList
+    final_list = AssetList()
+    for entry in validated_assets:
+        canon_lower = entry["canonical_name"].lower()
+        orig = name_to_original_asset.get(canon_lower, {})
+
+        final_entry = {
+            "canonical_name": entry["canonical_name"],
+            "aliases": entry.get("aliases", []),
+            "modality": entry.get("modality") or orig.get("modality", "N/A"),
+            "targets": entry.get("targets") or orig.get("targets", [target_name]),
+            "filtered_terms": orig.get("filtered_terms", []),
+        }
+        final_list.append(final_entry)
+
+    print(
+        f"  [Classifier] Globally consolidated from {len(assets)} down to {len(final_list)} unique asset(s)."
+    )
+    return final_list
