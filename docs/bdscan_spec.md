@@ -70,7 +70,7 @@ _Note: `{target_dir}` is the pathway scan folder initialized in `bdscan_orchestr
   - **Turn 1:** Reads synonyms and target metadata. Formulates search keywords (English/Mandarin). Launches initial queries.
   - **Turn 2:** Reviews raw search outputs, identifies gaps, handles spelling variations, and paginates.
   - **Turn 3:** Runs secondary queries for assets found in other sources or synonyms with sparse data.
-  - **Turn 4:** Finalizes queries and triggers migration of raw JSONs to `database_json/`.
+  - **Turn 4:** Final turn (budget exhausted). Prompts the agent with a critical reminder to summarize without calling tools, and terminates early before tool parsing to guarantee the research log is compiled and written.
 - **Error Isolation:** Each worker runs inside its own `try/except` block. Failure in one database does not crash the pipeline. The orchestrator continues if at least two core registries (ClinicalTrials.gov + NMPA CDE Direct) succeed.
 
 ### Agent 3: Landscape Compiler Agent (`src/agents/bdscan_agents/landscape_compiler_agent.py`)
@@ -82,10 +82,12 @@ _Note: `{target_dir}` is the pathway scan folder initialized in `bdscan_orchestr
 - **Mode:** Structured 4-turn loop agent, executed concurrently with a `ThreadPoolExecutor` (max 4 workers).
 - **Objective:** Research qualitative clinical metrics (development status, selectivity, key efficacy, milestones) using web search.
 - **Concurrency & Deduplication:** Checks a lock-protected registry before researching. If another worker has claimed the asset or its synonyms, skips research and links to the parent row. Writes outputs strictly to new qualitative columns.
+- **Turn Budget & Fallbacks:** Enforces a 4-turn budget with a critical prompt warning on Turn 4, and guards web searching on the final turn. If the loop completes without the agent invoking `edit_landscape_table`, it runs an automated fallback LLM extraction that parses the search history and writes the safety, efficacy, milestones, and citations to the table row to avoid leaving columns in a pending state.
 
 ### Agent 5: Final Synthesis Agent (`src/agents/bdscan_agents/synthesis_agent.py`)
 - **Mode:** 10-turn strategic synthesis agent.
 - **Objective:** Generates the final strategically synthesized markdown report and competitive matrix in `final_output/`.
+- **Turn Budget & Extraction:** Enforces a 10-turn budget with a warning reminder on Turn 10. The loop breaks early on Turn 10 before parsing/executing tool calls, and extracts the report robustly by searching history in reverse for the last agent response, ensuring system tool results are never captured as the final report.
 - **Formatting Constraints:** The strategic report markdown must **not** embed the big table inline to avoid page-splitting/formatting bugs in PDF generation.
 
 ### Curator Agent (`src/agents/bdscan_agents/curator_agent.py`)

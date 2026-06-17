@@ -60,6 +60,7 @@ This file indexes the workspace structure and defines architectural rules/constr
 2. **AI Agent Centricity**:
    - Prefer AI agents and LLM calls over heuristics, which are brittle and unreliable. Replace existing heuristics with LLM implementations where appropriate.
    - All AI agents live in `src/agents/`. Design pattern: exactly one agent per file.
+   - For stateful multi-turn agents, enforce a turn budget with a critical prompt warning on the final turn. Break loops early on the final turn before parsing/executing tool calls to guarantee finalization, and implement automated extraction/synthesis fallbacks where necessary.
 3. **LLM Query Client**:
    - All LLM queries must route through `src/services/llm_client.py`.
    - Utilizes thread-safe FIFO queue, connection/LLM retries, and exponential backoff.

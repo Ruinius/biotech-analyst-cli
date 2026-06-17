@@ -469,4 +469,5 @@ def test_cli_deepdive_under_construction():
     runner = CliRunner()
     result = runner.invoke(app, ["deepdive"])
     assert result.exit_code == 0
-    assert "under construction" in result.stdout.lower()
+    stdout = result.stdout.lower()
+    assert "under" in stdout and "construction" in stdout

@@ -94,7 +94,12 @@ class SynthesisAgent:
                 f"Turn {turn} details:\n"
             )
 
-            if turn == 1:
+            if turn == turn_budget:
+                prompt += (
+                    "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST compile and write the complete, "
+                    "detailed final strategic diligence report now, and end your response with the [FINALIZE] tag. Do NOT make any tool calls."
+                )
+            elif turn == 1:
                 prompt += (
                     "Please analyze the pathway data and run a web_search query to verify recent market size, "
                     "regulatory policies, or competitor status for this class."
@@ -111,6 +116,9 @@ class SynthesisAgent:
 
             history.append(f"User: {prompt}")
             history.append(f"Agent: {response}")
+
+            if turn == turn_budget:
+                break
 
             # Parse tool calls
             tool_match = re.search(
@@ -132,7 +140,7 @@ class SynthesisAgent:
                 else:
                     history.append(f"System Tool Result: Unknown tool '{called_tool}'.")
             else:
-                if "[FINALIZE]" in response or turn == turn_budget:
+                if "[FINALIZE]" in response:
                     break
 
         # Generate report and table files in final_output/
@@ -149,9 +157,18 @@ class SynthesisAgent:
             / f"meta_analysis_{self.folder_safe_name}_table_{date_str}.md"
         )
 
-        # The agent's response contains the report
-        report_text = history[-1].replace("[FINALIZE]", "").strip()
-        # Clean up any residual tool call strings if present
+        # Robustly extract the agent's response containing the report
+        report_text = ""
+        for hist_item in reversed(history):
+            if hist_item.startswith("Agent: "):
+                report_text = hist_item[len("Agent: ") :].strip()
+                break
+
+        if not report_text:
+            report_text = history[-1].replace("[FINALIZE]", "").strip()
+
+        # Clean up tags and tool call strings if present
+        report_text = report_text.replace("[FINALIZE]", "").strip()
         report_text = re.sub(r"\[TOOL_CALL:.*?\]", "", report_text).strip()
 
         # Write strategic report

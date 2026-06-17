@@ -343,6 +343,7 @@ class AssetResearchAgent:
     def run_loop_for_asset(self, table_path: Path, asset_name: str, cols: list[str]):
         history = []
         turn_budget = 4
+        table_updated = False
 
         sponsor = cols[2] if len(cols) > 2 else "N/A"
         modality = cols[3] if len(cols) > 3 else "N/A"
@@ -375,7 +376,13 @@ class AssetResearchAgent:
                 f"We are conducting due diligence on '{asset_name}' developed by '{sponsor}'.\n"
                 f"Turn {turn} details:\n"
             )
-            if turn == 1:
+            if turn == turn_budget:
+                prompt += (
+                    "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST call the edit_landscape_table tool "
+                    "now with all qualitative safety, efficacy, and milestone information you have found so far, and output [FINALIZE] "
+                    "in your response to save your work. If you do not call edit_landscape_table now, your research will be lost."
+                )
+            elif turn == 1:
                 prompt += f"Please run an initial web_search to find selectivity, safety, and clinical milestones for {asset_name}."
             else:
                 prompt += (
@@ -399,15 +406,20 @@ class AssetResearchAgent:
                 args_str = tool_match.group(2)
 
                 if called_tool == "web_search":
-                    # Extract query
-                    query_match = re.search(r"query\s*=\s*\"(.*?)\"", args_str)
-                    query = (
-                        query_match.group(1)
-                        if query_match
-                        else f"{asset_name} {sponsor} clinical data"
-                    )
-                    result = web_search(query)
-                    history.append(f"System Tool Result: {result}")
+                    if turn == turn_budget:
+                        history.append(
+                            "System Tool Result: Error: Cannot execute web search on final turn. Turn budget exhausted."
+                        )
+                    else:
+                        # Extract query
+                        query_match = re.search(r"query\s*=\s*\"(.*?)\"", args_str)
+                        query = (
+                            query_match.group(1)
+                            if query_match
+                            else f"{asset_name} {sponsor} clinical data"
+                        )
+                        result = web_search(query)
+                        history.append(f"System Tool Result: {result}")
                 elif called_tool == "edit_landscape_table":
                     # Parse safety, efficacy, milestones, citations
                     args = {}
@@ -432,11 +444,79 @@ class AssetResearchAgent:
                             self.asset_config,
                         )
                     history.append("System Tool Result: Table updated successfully.")
+                    table_updated = True
                 else:
                     history.append(f"System Tool Result: Unknown tool '{called_tool}'.")
-            else:
-                if "[FINALIZE]" in response or turn == turn_budget:
-                    break
+
+            if "[FINALIZE]" in response or turn == turn_budget:
+                break
+
+        # Fallback automated extraction if table was not updated
+        if not table_updated:
+            formatting.print_warning(
+                f"Web research agent did not update the table for {asset_name}. Running fallback extraction..."
+            )
+            fallback_prompt = (
+                f"Based on the research history below for candidate '{asset_name}', please extract or summarize the following fields:\n"
+                f"1. Selectivity & Safety Profile (concise description)\n"
+                f"2. Key Efficacy Data (concise description)\n"
+                f"3. Upcoming Milestones (concise description)\n"
+                f"4. Citations / Sources (PMIDs, trial registry IDs, or links)\n\n"
+                f"Research History:\n" + "\n".join(history) + "\n\n"
+                "Respond ONLY with a valid JSON object with the keys:\n"
+                '  "safety": string\n'
+                '  "efficacy": string\n'
+                '  "milestones": string\n'
+                '  "citations": string\n'
+                "No explanation, no other text."
+            )
+            fallback_system = (
+                "You are a data extraction assistant. Output only valid JSON."
+            )
+            try:
+                fallback_response = self.client.query(fallback_prompt, fallback_system)
+                clean_res = fallback_response.strip()
+                if clean_res.startswith("```"):
+                    clean_res = re.sub(r"^```[a-z]*\n?", "", clean_res)
+                    clean_res = re.sub(r"\n?```$", "", clean_res.strip())
+                res_dict = json.loads(clean_res)
+                safety = (
+                    res_dict.get("safety")
+                    or "Selectivity/safety profile details not found in search results."
+                )
+                efficacy = (
+                    res_dict.get("efficacy")
+                    or "Key efficacy data not found in search results."
+                )
+                milestones = (
+                    res_dict.get("milestones")
+                    or "Next clinical readouts/milestones pending."
+                )
+                citations = res_dict.get("citations") or "N/A"
+                with self._registry_lock:
+                    update_table_row(
+                        table_path,
+                        asset_name,
+                        safety,
+                        efficacy,
+                        milestones,
+                        citations,
+                        self.asset_config,
+                    )
+            except Exception as e:
+                formatting.print_error(
+                    f"Fallback extraction failed for {asset_name}: {e}"
+                )
+                with self._registry_lock:
+                    update_table_row(
+                        table_path,
+                        asset_name,
+                        "Safety profile query completed; details pending synthesis.",
+                        "Efficacy query completed; details pending synthesis.",
+                        "Milestones query completed; details pending synthesis.",
+                        "N/A",
+                        self.asset_config,
+                    )
 
         # Save execution log to a markdown file
         clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", asset_name)

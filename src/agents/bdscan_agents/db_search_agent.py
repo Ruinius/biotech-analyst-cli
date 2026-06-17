@@ -518,7 +518,13 @@ class DatabaseSearchAgent:
                 f"Target Modality constraints: {modality if modality else 'None'}\n\n"
                 f"Turn {turn} details:\n"
             )
-            if turn == 1:
+            if turn == turn_budget:
+                prompt += (
+                    "CRITICAL: This is your LAST turn (Turn Budget Exhausted). You MUST compile and write your final "
+                    "comprehensive Markdown summary reviewing the findings now, and end your response with the [FINALIZE] tag. "
+                    "Do NOT make any tool calls."
+                )
+            elif turn == 1:
                 prompt += f"Please invoke the tool '{tool_name}' using one of the primary synonyms to fetch initial data."
             else:
                 prompt += (
@@ -534,6 +540,34 @@ class DatabaseSearchAgent:
             history.append(f"User: {prompt}")
             history.append(f"Agent: {response}")
             source_log_lines.append(f"Turn {turn} Response:\n{response}")
+
+            if turn == turn_budget:
+                # Compile final log immediately on final turn to ensure save
+                log_file = (
+                    self.target_dir
+                    / "research"
+                    / f"research_log_0{idx}_{tool_name.replace('search_', '')}.md"
+                )
+                clean_md = response.replace("[FINALIZE]", "").strip()
+                clean_md = re.sub(r"\[TOOL_CALL:.*?\]", "", clean_md).strip()
+                log_header = (
+                    f"# Research Log {idx}: {source_name} Sourcing\n"
+                    f"**Date Accessed**: {datetime.date.today().strftime('%Y-%m-%d')}\n"
+                    f"**Analyst**: Senior Biotech BD Analyst\n"
+                    f"**Source**: {source_name}\n"
+                    f"**Target Pathway**: {target_name}\n\n"
+                    "---\n\n"
+                )
+                log_file.write_text(log_header + clean_md, encoding="utf-8")
+                formatting.print_success(f"    Saved research log to {log_file}")
+                self.logs.append(
+                    {
+                        "source": source_name,
+                        "log_file": str(log_file),
+                        "summary": clean_md[:200],
+                    }
+                )
+                break
 
             # Parse tool call
             tool_match = re.search(
@@ -623,7 +657,7 @@ class DatabaseSearchAgent:
                 current_term_index += 1
             else:
                 # No tool call, did the agent finalize?
-                if "[FINALIZE]" in response or turn == turn_budget:
+                if "[FINALIZE]" in response:
                     # Compile final log
                     log_file = (
                         self.target_dir

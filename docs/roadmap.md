@@ -106,14 +106,36 @@ This document lays out the milestones and tasks to implement the new agentic arc
 
 ---
 
-## Next Steps
+## Phase 10: Robustness, Performance Tuning, & Architecture Alignment
 
-- [x] It looks like all the json files and database search outputs are still being dumped in the tmp folder instead of the actual scan folder.
-- [x] Double check that there is playwright searching through CDE right now
-- [x] Increase the results from clinicaltrials.gov from 50 to 200
-- [x] Double check when is learning.md being used. It needs to be actually part of the context for database search and web search, and the respective agents need to actually have the agency to make use of these learnings when deciding to call tools.
-- [x] Increase or configure the read timeout specifically for the streaming HTTP client in [llm_client.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/services/llm_client.py) (e.g., using `httpx.Timeout(60.0, connect=10.0)`) to prevent `httpx.ReadTimeout` errors during API server load or long generation stalls.
-- [x] Optimize and decrease the batch size of the assets parsed in parallel in the orchestrators to keep the LLM prompt payloads smaller, reduce time-to-first-token latency, and avoid timeouts.
-- [x] Explore concurrency for database result reconciliation: modify `classify_interventions()` to submit batch tasks in parallel, and enhance `LLMQueueManager` and `LLMClient` to support concurrent worker pools, rate-limiting jitter, and buffered/non-streaming console outputs to prevent interleaved logs.
-- [x] classify_interventions should be an agent in bdscan_agent.
-- [x] deepdive should show as under construction for now.
+- [x] **Scan Directory Isolation:** Ensure search outputs and JSON results are correctly routed to the active scan directory rather than lingering in temporary folders.
+- [x] **Registry Scrapers & Coverage Expansion:** Verify CDE (Center for Drug Evaluation) direct scraping with Playwright, and increase results limit for ClinicalTrials.gov query tool from 50 to 200 records.
+- [x] **Dynamic Agent Learning Integration:** Expand `learning.md` injection into agent prompting contexts, empowering both Database Search and Web Research agents to leverage historical learning iterations when dynamically choosing tools.
+- [x] **LLM Client Resilience & Scaling:** Configure read timeout options specifically for the streaming HTTP client in [llm_client.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/services/llm_client.py) (using `httpx.Timeout(60.0, connect=10.0)`) to mitigate connection drops and timeout issues during peak API server loads.
+- [x] **Prompt and Batch Size Optimization:** Reduce the batch size of parallel assets queried inside orchestrators to decrease prompt size, improve latency, and avoid load-related LLM failures.
+- [x] **Concurrency & Interleaved Logging:** Implement parallel batch execution in `classify_interventions()`, support worker pools and jitter in `LLMClient`, and buffer console outputs to keep logs clean and readable.
+- [x] **Agent Refactoring:** Move `classify_interventions` to live as an independent agent under `src/agents/bdscan_agents/`.
+- [x] **Deep-Dive Diligence Stub:** Set up the `deepdive` pipeline runner to correctly render as under construction pending detailed implementation specifications.
+
+---
+
+## Next Steps / Bugs
+
+- [x] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", everything just says web search pending despite 110 web searches being completed. I suspect the web search agent does not have a reminder that it's on the final turn and needs to finalize. In fact, every agent needs this final turn reminder.
+- [ ] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", there are obvious duplicates, such as the two IMC002 and LM-302
+
+## Future Ideas
+
+- [ ] **Phase 11: Agentic Deep-Dive Diligence Pipeline**
+  - Transition the `deepdive` pipeline from the current sequential subprocess-based implementation to a fully agentic workflow in `src/agents/deepdive_agents/`.
+  - Implement a multi-turn deep-dive analyst agent to cross-examine and summarize ClinicalTrials records, PubChem bioassays, and openFDA label text into a structured, publication-ready SWOT analysis and investment memo.
+  - Design interactive post-report chat interfaces, allowing users to dynamically probe the agent with follow-up clinical or preclinical questions on the parsed deep-dive assets.
+- [ ] **Quality Audit & Verification Expansion**
+  - Enhance the [validate_report.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/utils/validate_report.py) script to audit the output PDF files directly (converting PDF back to text) to ensure no target assets or regulatory IDs were truncated or dropped during layout pagination.
+  - Implement an automated report diffing tool to compare newly synthesized markdown reports against historic baselines, highlighting differences in clinical efficacy figures or timeline forecasts.
+- [ ] **Registry Tool Coverage Expansion**
+  - Add new registry fetchers under `src/tools/` for additional regions and data sources (e.g., Japan's PMDA clinical trial registry, Health Canada clinical trials search, or WHO International Clinical Trials Registry Platform (ICTRP) direct API calls).
+  - Integrate structured academic literature searching (e.g., PubMed/EuropePMC citation parsing) directly into the Database Search agent workflow to automatically extract early-stage conference abstracts (ASCO, AACR, ESMO) mentioning the asset.
+- [ ] **LLM Performance & Multi-Key Load Balancing**
+  - Implement support for multi-provider API keys and automatic key rotation within `LLMQueueManager` to overcome rate limit bottlenecks when executing highly concurrent agent queries.
+  - Investigate local/open-source model options (e.g., Llama-3 or Mistral variants via Ollama or local vLLM instances) as secondary query providers for routine name sanitization tasks to decrease API latency and cost.

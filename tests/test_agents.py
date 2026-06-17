@@ -883,6 +883,101 @@ def test_discover_config_reuses_reconciled_json(tmp_path):
     assert config_file.exists()
 
 
+@patch("src.services.llm_client.LLMClient.query")
+@patch("src.agents.bdscan_agents.db_search_agent.search_clinicaltrials")
+def test_db_search_agent_final_turn_break(
+    mock_search, mock_query, settings, target_dir
+):
+    mock_query.side_effect = [
+        '[TOOL_CALL: search_clinicaltrials(term="TestPathway", limit=50)]',
+        '[TOOL_CALL: search_clinicaltrials(term="TestPathway", limit=50)]',
+        '[TOOL_CALL: search_clinicaltrials(term="TestPathway", limit=50)]',
+        '[TOOL_CALL: search_clinicaltrials(term="TestPathway", limit=50)]',
+    ]
+    mock_search.return_value = "Success"
+
+    agent = DatabaseSearchAgent(settings, "testpathway", target_dir)
+    agent.run_loop_for_source(
+        idx=1,
+        source_name="ClinicalTrials.gov",
+        tool_name="search_clinicaltrials",
+        synonyms=["TestPathway"],
+        target_name="TestPathway",
+        modality="ADC",
+    )
+
+    # Since it was the final turn, mock_search should only be called 3 times (Turns 1, 2, 3)
+    # On Turn 4 (final turn), it breaks early and doesn't call search_clinicaltrials
+    assert mock_search.call_count == 3
+    # And the log file should exist
+    log_path = target_dir / "research" / "research_log_01_clinicaltrials.md"
+    assert log_path.exists()
+
+
+@patch("src.services.llm_client.LLMClient.query")
+@patch("src.agents.bdscan_agents.asset_research_agent.web_search")
+def test_asset_research_agent_fallback(
+    mock_web_search, mock_query, settings, target_dir
+):
+    mock_web_search.return_value = "Success"
+    # LLM never calls edit_landscape_table, only web_search
+    # Mock fallback query response as JSON string
+    mock_query.side_effect = [
+        '[TOOL_CALL: web_search(query="Zolbetuximab efficacy")]',
+        '[TOOL_CALL: web_search(query="Zolbetuximab safety")]',
+        '[TOOL_CALL: web_search(query="Zolbetuximab milestones")]',
+        '[TOOL_CALL: web_search(query="Zolbetuximab citations")]',
+        # Fallback query response
+        '{"safety": "Mild toxicity", "efficacy": "PR 45%", "milestones": "Phase 3 readout", "citations": "PubMed 123"}',
+    ]
+
+    # Write dummy landscape table first
+    table_path = target_dir / "research" / "landscape_table.md"
+    headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = (
+        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    )
+    row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
+
+    agent = AssetResearchAgent(settings, target_dir)
+    agent.research_all_assets()
+
+    # The table should be updated via fallback
+    content = table_path.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    cols = [c.strip() for c in lines[2].split("|")]
+    assert cols[8] == "Mild toxicity"
+    assert cols[9] == "PR 45%"
+    assert cols[10] == "Phase 3 readout"
+    assert cols[11] == "PubMed 123"
+
+
+@patch("src.services.llm_client.LLMClient.query")
+def test_synthesis_agent_final_turn_break_and_extraction(
+    mock_query, settings, target_dir
+):
+    # LLM returns web_search for first 9 turns, then on Turn 10 (final turn) returns a report + [FINALIZE]
+    mock_query.side_effect = [
+        '[TOOL_CALL: web_search(query="Zolbetuximab efficacy")]'
+    ] * 9 + ["My strategic report. [FINALIZE]"]
+
+    table_path = target_dir / "research" / "landscape_table.md"
+    table_path.write_text(
+        "| Asset | Phase |\n| :--- | :--- |\n| TestDrug | Phase 1 |\n", encoding="utf-8"
+    )
+
+    agent = SynthesisAgent(settings, "testpathway", target_dir)
+    report_file, table_file = agent.generate_synthesis("TestPathway")
+
+    assert report_file.exists()
+    assert table_file.exists()
+    report_content = report_file.read_text(encoding="utf-8")
+    assert "My strategic report." in report_content
+    assert "[FINALIZE]" not in report_content
+    assert "TOOL_CALL" not in report_content
+
+
 if __name__ == "__main__":
     import subprocess
     import sys
