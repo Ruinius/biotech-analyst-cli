@@ -2,7 +2,7 @@
 Landscape Compiler Agent — §3 refactor: direct Python imports, no subprocess.
 
 Orchestrates compilation of the initial competitive landscape table by:
-1. Loading raw CT + China CDE data from tmp/ (§3) / database_json/ (§1+)
+1. Loading raw CT + China CDE data from database_json/
 2. Calling build_landscape_table() directly via Python import
 3. Appending Web-research placeholder columns
 4. Writing aligned landscape_table.md and landscape_table.csv to {target_dir}/research/

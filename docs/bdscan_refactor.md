@@ -99,7 +99,7 @@ graph LR
 Each milestone must maintain a working pipeline at all times:
 
 1. **§3**: After decomposition, the `landscape_compiler_agent.py` must produce **byte-identical output** to the current subprocess-based version for the same inputs. Validate with a diff test on a known scan output.
-2. **§1**: During the transition, `db_search_agent.py` writes raw JSONs to **both** `tmp/` and `{target_dir}/database_json/`. Once the landscape compiler and all downstream consumers are confirmed to read from `database_json/`, the `tmp/` writes are removed.
+2. **§1**: The `tmp/` writes have been completely removed. The pipeline now writes raw query results and merged registry databases directly to `{target_dir}/database_json/`.
 3. **§2**: The `parse_asset_and_aliases()` function remains available in `src/utils/landscape/table_formatters.py` as a fallback. It is only deleted after the LLM alias resolver passes all existing test cases.
 4. **§4**: A `--sequential` CLI flag is added to `ba bdscan` to force the pre-concurrency execution path for debugging.
 

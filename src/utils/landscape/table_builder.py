@@ -334,13 +334,6 @@ def load_and_build_from_files(
         search_dirs.append(os.path.dirname(os.path.abspath(clinicaltrials_path)))
     if database_json_dir and os.path.exists(database_json_dir):
         search_dirs.append(database_json_dir)
-    search_dirs += [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tmp"),
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "tmp"
-        ),
-        os.path.join(os.getcwd(), "tmp"),
-    ]
 
     seen_paths: set = set()
     for s_dir in search_dirs:

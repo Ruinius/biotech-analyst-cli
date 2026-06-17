@@ -3,7 +3,6 @@ import glob
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -33,21 +32,8 @@ def run_cmd(cmd_args: list[str]) -> tuple[bool, str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tool Functions — §1: dual-write to tmp/ AND {target_dir}/database_json/
+# Tool Functions
 # ---------------------------------------------------------------------------
-
-
-def _copy_to_db_json(tmp_path: str, db_json_dir: str | None) -> None:
-    """Copy a raw JSON from tmp/ to database_json/ if that directory exists."""
-    if db_json_dir and os.path.exists(tmp_path):
-        os.makedirs(db_json_dir, exist_ok=True)
-        dest = os.path.join(db_json_dir, os.path.basename(tmp_path))
-        if os.path.abspath(tmp_path) == os.path.abspath(dest):
-            return
-        try:
-            shutil.copy2(tmp_path, dest)
-        except Exception as e:
-            print(f"Warning: Failed to copy {tmp_path} to {dest}: {e}")
 
 
 def search_clinicaltrials(
@@ -73,8 +59,6 @@ def search_clinicaltrials(
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing ClinicalTrials.gov fetch for '{term}': {err or out}"
-
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -121,8 +105,6 @@ def search_anzctr_ctis(
     if not success or not os.path.exists(out_file):
         return f"Error executing ANZCTR/CTIS fetch for '{term}': {err or out}"
 
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
-
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
@@ -165,8 +147,6 @@ def search_conferences(
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing Conference abstract fetch for '{term}': {err or out}"
-
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -213,8 +193,6 @@ def search_chinese_registries(
     if not success or not os.path.exists(out_file):
         return f"Error executing Chinese Registries fetch for '{term}': {err or out}"
 
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
-
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         [
@@ -254,8 +232,6 @@ def search_china_direct(
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing CDE Playwright scrape for '{term}': {err or out}"
-
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -300,8 +276,6 @@ def search_ip_lens(
     if not success or not os.path.exists(out_file):
         return f"Error executing Lens.org IP fetch for '{term}': {err or out}"
 
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
-
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         ["src/tools/summarize_ip_lens.py", "--input", out_file, "--output", sum_file]
@@ -333,8 +307,6 @@ def search_pubchem(
     if not success or not os.path.exists(out_file):
         return f"Error executing PubChem fetch for '{term}': {err or out}"
 
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
-
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         ["src/tools/summarize_pubchem.py", "--input", out_file, "--output", sum_file]
@@ -365,8 +337,6 @@ def search_openfda(
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing openFDA fetch for '{term}': {err or out}"
-
-    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -421,7 +391,6 @@ class DatabaseSearchAgent:
             ("openFDA Briefings", "search_openfda", en_list),
         ]
 
-        os.makedirs("tmp", exist_ok=True)
         research_dir = self.target_dir / "research"
         research_dir.mkdir(parents=True, exist_ok=True)
 
@@ -752,8 +721,6 @@ class DatabaseSearchAgent:
         formatting.print_success(
             f"Merged {len(merged_trials)} clinical trial records to {merged_ct_file}"
         )
-        # §1: Also copy merged CT file to database_json/
-        _copy_to_db_json(merged_ct_file, self._db_json_dir)
 
         # 2. Merge China Direct CDE Scrapes
         merged_china = []
@@ -784,5 +751,3 @@ class DatabaseSearchAgent:
         formatting.print_success(
             f"Merged {len(unique_china)} direct CDE records to {merged_china_file}"
         )
-        # §1: Also copy merged China file to database_json/
-        _copy_to_db_json(merged_china_file, self._db_json_dir)

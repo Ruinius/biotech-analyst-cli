@@ -241,7 +241,6 @@ def discover_config(
         target_name: Primary target name for LLM classification
         target_synonyms: Additional target synonyms
         database_json_dir: Optional path to {target_dir}/database_json/ for conference files.
-                           Falls back to searching tmp/ directories.
 
     Raises RuntimeError if LLM classification fails (no silent fallback).
     """
