@@ -436,11 +436,13 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
             modality_map[alias.lower()] = entry.get("modality", "N/A")
 
         merged_indices = []
+        names_norms = {normalize_drug_name(n) for n in names_set}
+        names_lowers = {n.lower() for n in names_set}
         for i, g in enumerate(groups):
             g_norms = {normalize_drug_name(x) for x in g}
-            if any(
-                normalize_drug_name(n) in g_norms or n.lower() in {x.lower() for x in g}
-                for n in names_set
+            g_lowers = {x.lower() for x in g}
+            if not names_norms.isdisjoint(g_norms) or not names_lowers.isdisjoint(
+                g_lowers
             ):
                 merged_indices.append(i)
 
