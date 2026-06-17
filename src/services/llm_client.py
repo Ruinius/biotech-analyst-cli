@@ -206,7 +206,7 @@ class LLMClient:
                             full_response.append(text)
                             sys.stdout.write(text)
                             sys.stdout.flush()
-                        except json.JSONDecodeError, KeyError, IndexError:
+                        except (json.JSONDecodeError, KeyError, IndexError):  # fmt: skip
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()
@@ -261,7 +261,7 @@ class LLMClient:
                                 full_response.append(text)
                                 sys.stdout.write(text)
                                 sys.stdout.flush()
-                        except json.JSONDecodeError, KeyError, IndexError:
+                        except (json.JSONDecodeError, KeyError, IndexError):  # fmt: skip
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()
@@ -314,7 +314,7 @@ class LLMClient:
                                 full_response.append(text)
                                 sys.stdout.write(text)
                                 sys.stdout.flush()
-                        except json.JSONDecodeError, KeyError, IndexError:
+                        except (json.JSONDecodeError, KeyError, IndexError):  # fmt: skip
                             continue
         sys.stdout.write("\n\n")
         sys.stdout.flush()

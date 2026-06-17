@@ -21,9 +21,11 @@ _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from src.agents.bdscan_agents.asset_research_agent import AssetResearchAgent
-from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent
-from src.core.config import Settings
+from src.agents.bdscan_agents.asset_research_agent import (  # noqa: E402
+    AssetResearchAgent,
+)
+from src.agents.bdscan_agents.db_search_agent import DatabaseSearchAgent  # noqa: E402
+from src.core.config import Settings  # noqa: E402
 
 
 @pytest.fixture

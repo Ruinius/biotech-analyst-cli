@@ -22,7 +22,7 @@ _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from src.utils.landscape.reconciliation import (
+from src.utils.landscape.reconciliation import (  # noqa: E402
     map_anzctr_ctis,
     map_china_cde,
     map_chinese_registries,
@@ -216,7 +216,7 @@ def test_map_openfda_returns_dict():
 # 2. reconcile_all_sources integration test (LLM mocked)
 # ---------------------------------------------------------------------------
 
-from src.tools.classify_interventions import AssetList
+from src.tools.classify_interventions import AssetList  # noqa: E402
 
 MOCK_CLASSIFIED_ASSETS = AssetList(
     [

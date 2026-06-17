@@ -290,7 +290,7 @@ def test_build_landscape_table_creates_file():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "landscape_table.md"
-        result = build_landscape_table(
+        build_landscape_table(
             FIXTURE_CT_DATA,
             FIXTURE_CHINA_DATA,
             FIXTURE_CONFIG,

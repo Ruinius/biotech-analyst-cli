@@ -21,7 +21,7 @@ def test_settings_backwards_compatibility(temp_config_path):
         'FULL_NAME="Legacy User"\n'
         'EMAIL="legacy@test.com"\n'
         'BASE_FOLDER="legacy_base"\n'
-        'GEMINI_API_KEY="legacy_gemini_key"\n',
+        'GEMINI_API_KEY="legacy_gemini_key"\n',  # pragma: allowlist secret
         encoding="utf-8",
     )
 
@@ -31,7 +31,7 @@ def test_settings_backwards_compatibility(temp_config_path):
     assert settings.full_name == "Legacy User"
     assert settings.email == "legacy@test.com"
     assert settings.base_folder == "legacy_base"
-    assert settings.gemini_api_key == "legacy_gemini_key"
+    assert settings.gemini_api_key == "legacy_gemini_key"  # pragma: allowlist secret
     assert settings.openrouter_api_key is None
     assert settings.deepseek_api_key is None
     assert settings.llm_provider == "gemini"
@@ -59,9 +59,9 @@ def test_settings_save_and_load(temp_config_path):
         full_name="Tiger Huang",
         email="tiger@example.com",
         base_folder="AI_Biotech",
-        gemini_api_key="gem_key",
-        openrouter_api_key="or_key",
-        deepseek_api_key="ds_key",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
+        openrouter_api_key="or_key",  # pragma: allowlist secret
+        deepseek_api_key="ds_key",  # pragma: allowlist secret
         llm_provider="openrouter",
         llm_model="meta-llama/llama-3.1-70b-instruct",
         gemini_model="gemini-1.5-pro",
@@ -76,9 +76,9 @@ def test_settings_save_and_load(temp_config_path):
     assert loaded.full_name == "Tiger Huang"
     assert loaded.email == "tiger@example.com"
     assert loaded.base_folder == "AI_Biotech"
-    assert loaded.gemini_api_key == "gem_key"
-    assert loaded.openrouter_api_key == "or_key"
-    assert loaded.deepseek_api_key == "ds_key"
+    assert loaded.gemini_api_key == "gem_key"  # pragma: allowlist secret
+    assert loaded.openrouter_api_key == "or_key"  # pragma: allowlist secret
+    assert loaded.deepseek_api_key == "ds_key"  # pragma: allowlist secret
     assert loaded.llm_provider == "openrouter"
     assert loaded.llm_model == "meta-llama/llama-3.1-70b-instruct"
     assert loaded.gemini_model == "gemini-1.5-pro"
@@ -92,7 +92,7 @@ def test_llm_client_routing_gemini(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        gemini_api_key="gem_key",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
         llm_provider="gemini",
         llm_model="custom-gemini-2.0",
     )
@@ -120,7 +120,7 @@ def test_llm_client_routing_openrouter(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        openrouter_api_key="or_key",
+        openrouter_api_key="or_key",  # pragma: allowlist secret
         llm_provider="openrouter",
         llm_model="custom-or-model",
     )
@@ -149,7 +149,7 @@ def test_llm_client_routing_deepseek(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        deepseek_api_key="ds_key",
+        deepseek_api_key="ds_key",  # pragma: allowlist secret
         llm_provider="deepseek",
         llm_model="custom-ds-model",
     )
@@ -178,7 +178,7 @@ def test_llm_client_connection_retry(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        gemini_api_key="gem_key",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
         llm_provider="gemini",
     )
 
@@ -207,7 +207,7 @@ def test_llm_client_llm_level_retry(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        gemini_api_key="gem_key",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
         llm_provider="gemini",
     )
 
@@ -238,7 +238,7 @@ def test_llm_client_fatal_error_no_retry(mock_post, mock_load_config):
     mock_load_config.return_value = Settings(
         full_name="Test",
         email="test@test.com",
-        gemini_api_key="gem_key",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
         llm_provider="gemini",
     )
 
