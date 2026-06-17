@@ -97,13 +97,15 @@ def classify_interventions(
             "pharmaceutical naming conventions, clinical trial nomenclature, and "
             "approved global drugs. Output only valid JSON with no markdown fencing. "
             "When uncertain, classify as 'background'.\n"
-            "CRITICAL: An asset name MUST be a specific molecule name, brand name, or codename. "
+            "CRITICAL: An asset name MUST be a specific molecule name, brand name, or codename.\n"
             "Never classify general terms (like 'immunotherapy', 'chemotherapy', 'placebo'), "
-            "other targets (like 'HER2', 'EGFR'), or target descriptions as an 'asset'. "
+            "other targets (like 'HER2', 'EGFR'), or target descriptions as an 'asset'.\n"
             "Novel investigational assets typically have alphanumeric codes "
             "(e.g. AMG910, SHR-A1904, AZD6422) or USAN/INN stems "
-            "(-mab, -tib, -cept, -mig, -can, -bart) with a sponsor-specific prefix "
-            "that does not match any approved drug name."
+            "(-mab, -tib, -cept, -mig, -can, -bart) with a sponsor-specific prefix.\n"
+            "CRITICAL CLEANING & COMBINATION RULES:\n"
+            "1. Registry names may contain complex combination descriptions, Chinese pharmaceutical suffixes (like '注射液', '注射用'), or trailing clinical trial descriptions in parentheses. For such records, isolate and use the clean, target-specific base molecule name/codename (e.g. 'IBI343' or 'IMC002') as the 'canonical_name' of the asset, and list the original messy input string in 'aliases'. Do NOT include suffixes, trial descriptions, or combination partner therapies in the canonical name.\n"
+            "2. If an input name lists combination therapies (e.g., 'IBI343,sintilimab,oxaliplatin,S-1', 'Zolbetuximab combined with mFOLFOX6'), identify the target-specific asset (e.g., 'IBI343' or 'Zolbetuximab') as the canonical name. Put the entire combination string in the asset's 'aliases'. This maps the combination trial records to the core investigational drug."
         )
 
         # Call with stream=False to prevent interleaved console logs
@@ -341,7 +343,10 @@ def consolidate_synonyms_globally(
     system_instruction = (
         "You are an expert biotech asset consolidator. Output only valid JSON. "
         "Consolidate multiple names/codes of the same drug/molecule into a single asset. "
-        "Do not invent any new names not present in the input. Keep all valid assets."
+        "Do not invent any new names not present in the input. Keep all valid assets.\n"
+        "CRITICAL CONSOLIDATION RULES:\n"
+        "1. If some assets are combination regimens (e.g., 'IBI343,sintilimab...'), suffix-modified names (e.g. 'IMC002注射液'), or names with long parenthetical trial descriptions, consolidate them under the clean canonical drug name (e.g., 'IBI343' or 'IMC002').\n"
+        "2. Put all combination regimens, suffix-modified names, and trial description strings in the consolidated asset's 'aliases'. Make sure all variants are merged so there is only one entry per molecule in the output list."
     )
 
     client = LLMClient()

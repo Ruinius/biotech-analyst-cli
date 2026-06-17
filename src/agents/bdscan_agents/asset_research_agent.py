@@ -172,7 +172,7 @@ class AssetResearchAgent:
         web_search_dir.mkdir(parents=True, exist_ok=True)
 
         def research_single_row(idx, cols):
-            name_cell = cols[1]
+            name_cell = cols[2]
             primary_name = clean_cell_to_name(name_cell, self.asset_config)
             all_synonyms = extract_names_from_cell(name_cell, self.asset_config)
 
@@ -200,7 +200,7 @@ class AssetResearchAgent:
 
             # Run 4-turn loop for this new asset
             formatting.print_info(
-                f"Researching asset: {primary_name} ({cols[2] if len(cols) > 2 else 'N/A'})..."
+                f"Researching asset: {primary_name} ({cols[3] if len(cols) > 3 else 'N/A'})..."
             )
             self.run_loop_for_asset(table_path, primary_name, cols)
             return True
@@ -345,10 +345,10 @@ class AssetResearchAgent:
         turn_budget = 4
         table_updated = False
 
-        sponsor = cols[2] if len(cols) > 2 else "N/A"
-        modality = cols[3] if len(cols) > 3 else "N/A"
-        phase = cols[6] if len(cols) > 6 else "N/A"
-        trials = cols[7] if len(cols) > 7 else "N/A"
+        sponsor = cols[3] if len(cols) > 3 else "N/A"
+        modality = cols[4] if len(cols) > 4 else "N/A"
+        phase = cols[7] if len(cols) > 7 else "N/A"
+        trials = cols[8] if len(cols) > 8 else "N/A"
 
         # Load historical web-search learnings
         learnings = self._load_learnings("web-search")

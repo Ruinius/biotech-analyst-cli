@@ -221,9 +221,9 @@ def test_asset_research_agent_learnings(settings, target_dir):
 
         # Write dummy landscape table first
         table_path = target_dir / "research" / "landscape_table.md"
-        headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-        row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+        headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
         table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
         agent.research_all_assets()
@@ -264,11 +264,9 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
 
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
-    headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = (
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-    )
-    row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
     agent = AssetResearchAgent(settings, target_dir)
@@ -279,10 +277,10 @@ def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target
     lines = content.splitlines()
     assert len(lines) == 3
     cols = [c.strip() for c in lines[2].split("|")]
-    assert cols[8] == "Mild nausea"
-    assert cols[9] == "ORR 60%"
-    assert cols[10] == "Readout 2027"
-    assert cols[11] == "ASCO 2026"
+    assert cols[9] == "Mild nausea"
+    assert cols[10] == "ORR 60%"
+    assert cols[11] == "Readout 2027"
+    assert cols[12] == "ASCO 2026"
 
 
 @patch("src.services.llm_client.LLMClient.query")
@@ -933,11 +931,9 @@ def test_asset_research_agent_fallback(
 
     # Write dummy landscape table first
     table_path = target_dir / "research" / "landscape_table.md"
-    headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
-    divider = (
-        "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
-    )
-    row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+    headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+    divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+    row = "| 1 | **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
     table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
 
     agent = AssetResearchAgent(settings, target_dir)
@@ -947,10 +943,10 @@ def test_asset_research_agent_fallback(
     content = table_path.read_text(encoding="utf-8")
     lines = content.splitlines()
     cols = [c.strip() for c in lines[2].split("|")]
-    assert cols[8] == "Mild toxicity"
-    assert cols[9] == "PR 45%"
-    assert cols[10] == "Phase 3 readout"
-    assert cols[11] == "PubMed 123"
+    assert cols[9] == "Mild toxicity"
+    assert cols[10] == "PR 45%"
+    assert cols[11] == "Phase 3 readout"
+    assert cols[12] == "PubMed 123"
 
 
 @patch("src.services.llm_client.LLMClient.query")

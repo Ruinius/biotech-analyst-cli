@@ -237,17 +237,27 @@ def _name_priority(name: str) -> tuple:
       2 — Everything else (longer names slightly preferred over shorter)
     """
     name_lower = name.lower()
+
+    # Penalize combination regimens, trial titles, or messy parentheticals by shifting priority class
+    has_combo_chars = any(c in name for c in (",", "+", "/", "(", ")", "（", "）"))
+    has_combo_words = any(
+        w in name_lower for w in ["combined", "combination", "plus", "and", "with"]
+    )
+    is_too_long = len(name) > 30
+
+    penalty = 3 if (has_combo_chars or has_combo_words or is_too_long) else 0
+
     has_letter = any(c.isalpha() for c in name)
     has_digit = any(c.isdigit() for c in name)
 
     if has_letter and has_digit:
-        return (0, -len(name), name)
+        return (0 + penalty, -len(name), name)
 
     usan_stems = ("mab", "tib", "cept", "mig", "can", "bart", "vir", "kin")
     if any(name_lower.endswith(s) for s in usan_stems):
-        return (1, -len(name), name)
+        return (1 + penalty, -len(name), name)
 
-    return (2, -len(name), name)
+    return (2 + penalty, -len(name), name)
 
 
 def normalize_drug_name(name: str) -> str:

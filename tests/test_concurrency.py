@@ -105,10 +105,10 @@ def test_asset_research_duplicate_protection(mock_run_loop, settings):
         # Create dummy landscape_table.md
         table_path = research_dir / "landscape_table.md"
         table_content = (
-            "| Asset Name | Developer | Modality | Phase | Trial IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
-            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-            "| **Zolbetuximab** | Astellas | mAb | Phase 3 | NCT03504397 | N/A | N/A | N/A | N/A |\n"
-            "| **IMAB362** | Ganymed | mAb | Phase 3 | NCT03504397 | N/A | N/A | N/A | N/A |\n"
+            "| # | Asset Name | Developer | Modality | Phase | Trial IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |\n"
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+            "| 1 | **Zolbetuximab** | Astellas | mAb | Phase 3 | NCT03504397 | N/A | N/A | N/A | N/A |\n"
+            "| 2 | **IMAB362** | Ganymed | mAb | Phase 3 | NCT03504397 | N/A | N/A | N/A | N/A |\n"
         )
         table_path.write_text(table_content, encoding="utf-8")
 
@@ -135,10 +135,10 @@ def test_asset_research_duplicate_protection(mock_run_loop, settings):
             for idx, line in enumerate(lines):
                 if "Zolbetuximab" in line:
                     cols = line.split("|")
-                    cols[6] = " Zolbetuximab Safety "
-                    cols[7] = " Zolbetuximab Efficacy "
-                    cols[8] = " Zolbetuximab Milestones "
-                    cols[9] = " Zolbetuximab Citations "
+                    cols[7] = " Zolbetuximab Safety "
+                    cols[8] = " Zolbetuximab Efficacy "
+                    cols[9] = " Zolbetuximab Milestones "
+                    cols[10] = " Zolbetuximab Citations "
                     lines[idx] = "|".join(cols)
             table_p.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -5,19 +5,20 @@ This file contains accumulated learnings, heuristics, and constraints gathered b
 ## database-search
 - Avoid PubChem for protein targets and biologics; the PUG REST API relies on Compound Identifiers (CIDs) and consistently returns 404 errors.
 - Search openFDA by brand (e.g., “Vyloy”) or generic name (e.g., “zolbetuximab”) as target names are not indexed in safety and label data.
-- On ClinicalTrials.gov, use spaced synonyms (e.g., “Claudin 18.2”) for max coverage and hyphenated variants (e.g., “Claudin-18.2”) for multinational sponsor records.
-- In NMPA CDE, use English gene symbols first, then attempt the formal Chinese description (e.g., “紧密连接蛋白”) to capture specific domestic registrations.
-- Identify Chinese biologics and ADCs in NMPA CDE/ChiCTR using the “注射用” (Injectable) prefix and alphanumeric asset codes (e.g., “CT041”, “JS107”).
-- Chinese WHO registries (ChiCTR/ICTRP) favor English official gene symbols; Mandarin phonetic or formal translations often yield zero results.
-- Use EU CTIS and ANZCTR to identify "Biology before Stage" protocols and multiplex testing trends (e.g., SAPHIR) for targets alongside HER2 or PD-L1.
-- Conference databases are the primary source for tracking resistance mechanisms like secondary loss of expression or intrapatient heterogeneity.
-- Monitor conference abstracts for target expansion into emerging indications (e.g., Biliary Tract or Pancreatic Cancer) before they reach registries.
-- Patent databases (Lens.org) are sensitive to decimals; avoid isoform suffixes (e.g., “.2”) in favor of parent protein names (e.g., “Claudin 18”).
-- Search Lens.org by technical target name rather than generic drug names (e.g., “Zolbetuximab”), which often return zero results in IP databases.
-- Use ClinicalTrials.gov to identify Phase II/III diagnostic inclusion thresholds, such as specific IHC membrane staining intensity requirements (e.g., 2+ or 3+).
-- Access Chinese registries via direct web portals (NMPA CDE) to find the most current trial recruitment statuses and Phase III expansion data.
-- Do not retry searches for terms that trigger API errors (HTTP 400/404); these indicate fundamental tool or entity type limitations.
-- Mark a search as complete only after attempting official gene symbols, spaced English synonyms, and parent protein names in patent tools.
+- On ClinicalTrials.gov, use English symbols (CLDN18.2), spaced synonyms (Claudin 18.2), and hyphenated variants (Claudin-18.2) to capture maximum multinational sponsor records.
+- In NMPA CDE, use English gene symbols first; formal Chinese descriptions (紧密连接蛋白) capture specific domestic programs (e.g., Innovent), while phonetic translations often fail.
+- Identify Chinese biologics/ADCs in NMPA CDE/ChiCTR using the “注射用” (Injectable) prefix and alphanumeric asset codes (e.g., “CT041”, “JS107”, “IBI343”).
+- Chinese WHO registries (ChiCTR/ICTRP) favor English official gene symbols (CLDN18.2); Mandarin phonetic or formal translations typically yield zero results.
+- Use EU CTIS and ANZCTR to track "Biology before Stage" protocols and multiplex testing (CLDN18.2, HER2, PD-L1, MSI, EBV) for patient stratification.
+- Conference databases track resistance mechanisms such as secondary loss of expression and intrapatient heterogeneity between primary and metastatic sites.
+- Monitor conference abstracts for target expansion into emerging or rare indications (Biliary Tract, Pancreatic, Urachal, or Mucinous Ovarian Cancer).
+- Patent databases (Lens.org) are sensitive to decimals; search by parent protein name (e.g., “Claudin 18”) and avoid generic drug names (e.g., “Zolbetuximab”).
+- In IP searches, focus on Extracellular Loop 1 (ECL1) and isoform specificity to avoid cross-reactivity with off-target tissue (e.g., CLDN18.1 in lung).
+- ClinicalTrials.gov distinguishes inclusion thresholds by modality: high (e.g., ≥75% for mAbs) vs. moderate (e.g., ≥50% for ADCs/CAR-Ts) using 2+/3+ IHC intensity.
+- Access NMPA CDE to monitor the “immuno-cytotoxic convergence” trend, specifically Phase III registrations of ADCs combined with PD-1 inhibitors in first-line settings.
+- Use openFDA to identify labeled toxicity patterns for approved targets, such as severe nausea, vomiting, and hematologic abnormalities (e.g., neutropenia).
+- Mark a search as complete only after attempting gene symbols, spaced synonyms, parent protein names, and specific diagnostic clones (e.g., “43-14A”).
+- For combination regimens (e.g. `IBI343,sintilimab...`) and Chinese CDE records containing trial descriptions/suffixes in parentheses (e.g., `IMC002注射液 (...)`), use the LLM agent to cleanly consolidate them under their base canonical molecule names, mapping the messy combination/trial strings to aliases. Penalize combo-regimen indicators and trial title patterns in the canonical sorting keys to prevent messy names from becoming the canonical table rows.
 
 ## web-search
 - API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
