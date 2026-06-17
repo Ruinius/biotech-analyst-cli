@@ -14,7 +14,6 @@ This file indexes the workspace structure and defines architectural rules/constr
     - `cli_spec.md`: CLI interface parameters and command behaviors.
     - `bdscan_spec.md`: Multi-agent pipeline design for broad scans.
     - `roadmap.md`: Refactoring milestones and steps.
-    - `bdscan_refactor.md`: Detailed specifications for database reconciliation, LLM alias resolution, module separation, and concurrency.
 - `tests/`: Project unit, integration, and command-line test suite.
   - `test_agents.py`: Pipeline and agent integration tests.
   - `test_config.py`: LLM client queue, config manager, and retry tests.

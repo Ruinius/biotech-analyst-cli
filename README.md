@@ -34,9 +34,10 @@ uv pip install -e .
 
 - `ba config`: Run the interactive configuration flow to set name, email, API keys, and default base directory (defaults to Desktop).
 - `ba folder`: List all target research folders in the configured base directory alphabetically (using letters `a`, `b`, `c`, etc.) to easily view/locate active directories.
-- `ba bdscan [new/rerun]`:
-  - `new`: Prompts for pathway/target names, creates a new directory, and triggers the multi-registry fetch + compile + PDF sequence.
-  - `rerun`: Allows selecting an existing scan directory and re-runs the fetching/report generation pipeline.
+- `ba bdscan [new/rerun] [query]`: Run a broad pathway scan. Runs concurrent database searches (8 registries in parallel), merges results via a Reconciliation Mapper, compiles landscape tables using modular Python tools, and researches assets concurrently using a lock-protected web agent.
+  - `new`: Prompts for pathway/target names, creates a new directory, and triggers the broad scan pipeline.
+  - `rerun`: Allows selecting an existing scan directory and re-runs the pipeline.
+  - `--sequential` option: Forces sequential database and web-research execution, disabling all concurrency for debugging or rate-limiting safety.
 - `ba deepdive [new/rerun]`:
   - `new`: Prompts for specific asset names and trial IDs, creates a directory, and runs the deep-dive diligence pipeline.
   - `rerun`: Selects an existing deep-dive directory and re-runs the pipeline.

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from src.core.exceptions import ConfigError, ConfigNotFoundError
 
@@ -31,12 +31,11 @@ class Settings(BaseModel):
     )
     deepseek_model: str | None = Field(None, description="DeepSeek model preference")
 
-    @field_validator("base_folder")
-    @classmethod
-    def expand_base_folder(cls, v: str) -> str:
-        if v:
-            return str(Path(v).expanduser())
-        return v
+    @property
+    def expanded_base_folder(self) -> str:
+        if self.base_folder:
+            return str(Path(self.base_folder).expanduser())
+        return self.base_folder
 
 
 def config_exists() -> bool:
@@ -90,9 +89,6 @@ def load_config() -> Settings:
         # Backwards compatibility and fallbacks
         if "base_folder" not in data or not data["base_folder"]:
             data["base_folder"] = get_default_desktop()
-
-        if data.get("base_folder"):
-            data["base_folder"] = str(Path(data["base_folder"]).expanduser())
 
         return Settings(**data)
     except Exception as e:

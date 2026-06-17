@@ -34,9 +34,22 @@ app = typer.Typer(
 )
 
 
-@app.command("config")
-def main_config():
+config_app = typer.Typer(
+    name="config",
+    help="Configure your profile and API keys.",
+    no_args_is_help=False,
+)
+app.add_typer(config_app, name="config")
+
+
+@config_app.callback(invoke_without_command=True)
+def config_callback(ctx: typer.Context):
     """Interactive wizard to configure your profile and API keys."""
+    if ctx.invoked_subcommand is None:
+        main_config()
+
+
+def main_config():
     formatting.speak(
         "Welcome to the configuration sequence! Let us sequence your settings genes!",
         include_interjection=False,
@@ -181,6 +194,169 @@ def main_config():
         formatting.print_error(f"Failed to save configuration: {e}")
 
 
+@config_app.command("llm")
+def config_llm(
+    provider: str = typer.Argument(
+        None,
+        help="LLM provider: 'gemini', 'openrouter', or 'deepseek'",
+    ),
+    model: str = typer.Argument(
+        None,
+        help="Model name (e.g. 'gemini-1.5-flash', 'deepseek-chat')",
+    ),
+):
+    """Switch the active LLM provider and/or configure preferred models."""
+    if not config_exists():
+        formatting.print_error("Configuration not found. Please run 'ba config' first.")
+        raise typer.Exit(1)
+
+    try:
+        current = load_config()
+    except Exception as e:
+        formatting.print_error(f"Failed to load configuration: {e}")
+        raise typer.Exit(1)
+
+    provider_arg_passed = provider is not None
+
+    if not provider:
+        provider = (
+            typer.prompt(
+                "Select LLM Provider (gemini, openrouter, deepseek)",
+                default=current.llm_provider or "gemini",
+            )
+            .strip()
+            .lower()
+        )
+    else:
+        provider = provider.strip().lower()
+
+    while provider not in ("gemini", "openrouter", "deepseek"):
+        formatting.print_error(
+            "Invalid provider. Please choose from: gemini, openrouter, deepseek."
+        )
+        provider_arg_passed = False
+        provider = (
+            typer.prompt(
+                "Select LLM Provider (gemini, openrouter, deepseek)",
+                default=current.llm_provider or "gemini",
+            )
+            .strip()
+            .lower()
+        )
+
+    gemini_key = current.gemini_api_key or ""
+    openrouter_key = current.openrouter_api_key or ""
+    deepseek_key = current.deepseek_api_key or ""
+
+    gemini_model = current.gemini_model or ""
+    openrouter_model = current.openrouter_model or ""
+    deepseek_model = current.deepseek_model or ""
+
+    default_model = ""
+    if provider == "gemini":
+        default_model = gemini_model or "gemini-1.5-flash"
+    elif provider == "openrouter":
+        default_model = openrouter_model or "google/gemma-2-9b-it:free"
+    elif provider == "deepseek":
+        default_model = deepseek_model or "deepseek-chat"
+
+    current_key = ""
+    if provider == "gemini":
+        current_key = gemini_key
+    elif provider == "openrouter":
+        current_key = openrouter_key
+    elif provider == "deepseek":
+        current_key = deepseek_key
+
+    if not provider_arg_passed or not current_key:
+        new_key = typer.prompt(
+            f"{provider.capitalize()} API Key (press Enter to keep current)",
+            default=current_key,
+            show_default=False,
+        ).strip()
+        if provider == "gemini":
+            gemini_key = new_key
+        elif provider == "openrouter":
+            openrouter_key = new_key
+        elif provider == "deepseek":
+            deepseek_key = new_key
+
+    if not model:
+        model = typer.prompt(
+            f"{provider.capitalize()} Model (press Enter for default)",
+            default=default_model,
+        ).strip()
+    else:
+        model = model.strip()
+
+    if provider == "gemini":
+        gemini_model = model
+    elif provider == "openrouter":
+        openrouter_model = model
+    elif provider == "deepseek":
+        deepseek_model = model
+
+    new_settings = Settings(
+        full_name=current.full_name,
+        email=current.email,
+        base_folder=current.base_folder,
+        gemini_api_key=gemini_key if gemini_key else None,
+        openrouter_api_key=openrouter_key if openrouter_key else None,
+        deepseek_api_key=deepseek_key if deepseek_key else None,
+        llm_provider=provider,
+        llm_model=model,
+        gemini_model=gemini_model if gemini_model else None,
+        openrouter_model=openrouter_model if openrouter_model else None,
+        deepseek_model=deepseek_model if deepseek_model else None,
+    )
+
+    try:
+        save_config(new_settings)
+        formatting.print_success("LLM settings saved successfully to .env!")
+        formatting.speak(
+            f"Fascinating transcripts! Active LLM configuration updated:\n\n"
+            f"  [bold]LLM Provider:[/bold] {provider}\n"
+            f"  [bold]LLM Model:[/bold] {model}\n"
+            f"  [bold]Gemini Key:[/bold] {mask_key(gemini_key)}\n"
+            f"  [bold]OpenRouter Key:[/bold] {mask_key(openrouter_key)}\n"
+            f"  [bold]DeepSeek Key:[/bold] {mask_key(deepseek_key)}\n",
+            include_interjection=False,
+        )
+    except Exception as e:
+        formatting.print_error(f"Failed to save configuration: {e}")
+        raise typer.Exit(1)
+
+
+@config_app.command("show")
+def config_show():
+    """Display the current configuration profile and active settings."""
+    if not config_exists():
+        formatting.print_error("Configuration not found. Please run 'ba config' first.")
+        raise typer.Exit(1)
+
+    try:
+        current = load_config()
+    except Exception as e:
+        formatting.print_error(f"Failed to load configuration: {e}")
+        raise typer.Exit(1)
+
+    formatting.speak(
+        f"Colleague, here are your currently synthesized settings details:\n\n"
+        f"  [bold]Name:[/bold] {current.full_name}\n"
+        f"  [bold]Email:[/bold] {current.email}\n"
+        f"  [bold]Base Folder:[/bold] {current.base_folder}\n"
+        f"  [bold]LLM Provider:[/bold] {current.llm_provider}\n"
+        f"  [bold]LLM Model:[/bold] {current.llm_model or 'None'}\n"
+        f"  [bold]Gemini Key:[/bold] {mask_key(current.gemini_api_key)}\n"
+        f"  [bold]Gemini Model:[/bold] {current.gemini_model or 'None'}\n"
+        f"  [bold]OpenRouter Key:[/bold] {mask_key(current.openrouter_api_key)}\n"
+        f"  [bold]OpenRouter Model:[/bold] {current.openrouter_model or 'None'}\n"
+        f"  [bold]DeepSeek Key:[/bold] {mask_key(current.deepseek_api_key)}\n"
+        f"  [bold]DeepSeek Model:[/bold] {current.deepseek_model or 'None'}\n",
+        include_interjection=False,
+    )
+
+
 def get_folders_list(base_path: Path):
     """Retrieve subdirectories in the base folder sorted alphabetically."""
     if not base_path.exists():
@@ -199,7 +375,7 @@ def main_folder():
         raise typer.Exit(1)
 
     settings = load_config()
-    base_path = Path(settings.base_folder)
+    base_path = Path(settings.expanded_base_folder)
 
     if not base_path.exists():
         formatting.print_error(f"Base folder '{base_path}' does not exist.")
@@ -275,7 +451,7 @@ def main_bdscan(
         raise typer.Exit(1)
 
     settings = load_config()
-    base_path = Path(settings.base_folder)
+    base_path = Path(settings.expanded_base_folder)
     action = action.strip().lower()
 
     target_dir = None
@@ -386,7 +562,7 @@ def main_deepdive(
         raise typer.Exit(1)
 
     settings = load_config()
-    base_path = Path(settings.base_folder)
+    base_path = Path(settings.expanded_base_folder)
     action = action.strip().lower()
 
     target_dir = None

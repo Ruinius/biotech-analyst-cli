@@ -51,7 +51,8 @@ def test_settings_base_folder_expansion(temp_config_path):
 
     settings = load_config()
     expected_path = str(Path.home() / "Desktop" / "AI_Native_2026")
-    assert settings.base_folder == expected_path
+    assert settings.base_folder == "~/Desktop/AI_Native_2026"
+    assert settings.expanded_base_folder == expected_path
 
 
 def test_settings_save_and_load(temp_config_path):
@@ -298,3 +299,86 @@ def test_llm_queue_manager_sequential():
     mgr.queue.put(None)
     if mgr.worker_thread:
         mgr.worker_thread.join(timeout=1.0)
+
+
+def test_cli_config_show(temp_config_path):
+    from typer.testing import CliRunner
+
+    from src.cli.main import app
+
+    temp_config_path.write_text(
+        'FULL_NAME="Tiger Huang"\n'
+        'EMAIL="tiger@example.com"\n'
+        'BASE_FOLDER="~/Desktop/AI_Native_2026"\n'
+        'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
+        'LLM_PROVIDER="gemini"\n'
+        'LLM_MODEL="gemini-1.5-flash"\n',
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["config", "show"])
+    assert result.exit_code == 0
+    assert "Tiger Huang" in result.stdout
+    assert "tiger@example.com" in result.stdout
+    assert "~/Desktop/AI_Native_2026" in result.stdout
+    assert "gemini" in result.stdout
+    assert "gemini-1.5-flash" in result.stdout
+
+
+def test_cli_config_llm_non_interactive(temp_config_path):
+    from typer.testing import CliRunner
+
+    from src.cli.main import app
+    from src.core.config import load_config
+
+    temp_config_path.write_text(
+        'FULL_NAME="Tiger Huang"\n'
+        'EMAIL="tiger@example.com"\n'
+        'BASE_FOLDER="~/Desktop/AI_Native_2026"\n'
+        'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
+        'DEEPSEEK_API_KEY="ds_key"\n'  # pragma: allowlist secret
+        'LLM_PROVIDER="gemini"\n'
+        'LLM_MODEL="gemini-1.5-flash"\n',
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["config", "llm", "deepseek", "deepseek-chat"])
+    assert result.exit_code == 0
+    assert "LLM settings saved successfully" in result.stdout
+    assert "deepseek" in result.stdout
+    assert "deepseek-chat" in result.stdout
+
+    settings = load_config()
+    assert settings.llm_provider == "deepseek"
+    assert settings.llm_model == "deepseek-chat"
+
+
+def test_cli_config_llm_interactive(temp_config_path):
+    from typer.testing import CliRunner
+
+    from src.cli.main import app
+    from src.core.config import load_config
+
+    temp_config_path.write_text(
+        'FULL_NAME="Tiger Huang"\n'
+        'EMAIL="tiger@example.com"\n'
+        'BASE_FOLDER="~/Desktop/AI_Native_2026"\n'
+        'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
+        'LLM_PROVIDER="gemini"\n'
+        'LLM_MODEL="gemini-1.5-flash"\n',
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app, ["config", "llm"], input="openrouter\nmy_or_key\nmy_model\n"
+    )
+    assert result.exit_code == 0
+    assert "LLM settings saved successfully" in result.stdout
+
+    settings = load_config()
+    assert settings.llm_provider == "openrouter"
+    assert settings.openrouter_api_key == "my_or_key"  # pragma: allowlist secret
+    assert settings.llm_model == "my_model"

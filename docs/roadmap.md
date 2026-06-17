@@ -66,21 +66,47 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] **Pytest Mock Compatibility:** Establish a synchronous bypass/fallback mode using a lock when running in `pytest` to prevent scoping or timeout issues with test mocks.
 - [x] **Comprehensive Testing:** Add config and client-level test cases in `test_config.py` verifying retry sequences, queue processing order, and immediate fail behaviors.
 
-Next steps:
+---
 
-- [x] format the landscape and the final output table so that it shows as a table when opened with text (Unicode box-drawing `.txt` + `#` row-number column)
-- [x] in the context_agent, kill the fallback. The run should just stop with an error. NO FALLBACKS.
-- config needs option to switch LLM provider and models. Maybe call it "ba config llm"
-- double check the default config for folder name. I still see address specific to my computer instead of a generic address.
-- [x] double check how does db_search_agent actually work. Does it create a table of data that is merged at the end? I see jsons, but I see only clinicaltrials.gov and CDE are merged. What about the others?
-- [x] double check that when generating the final output table, that same assets with different names are actually merged. I see a bunch of web search pending right now in the final table.
-- [x] the web search agent is creating new columns instead of using existing Selectivity, Key Efficacy, Upcoming Milestones, and Citations columns, leading to them not being used at all. Let's delete these unused columns and just keep the web search agent code intact.
-- [x] other targets, such as HER2 and generic terms such as immunotherapy are sneaking into the "Asset Name" column in the landscape and final output table. Double check if the asset name column is heuristics (which is failing) or AI Agent based. The asset name column should be a molecule name, a brand name, or a codename (e.g., TST001)
-- [x]investigate the web-seach error in learning.md. It looks like there's a recurring issue with "valid API key" are there places where the llm_client is trying to call Gemini when it's been set tp deepseek? API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
-- [x] what is "update_learnings" in asset_reserach_agent? Only the curator_agent can update learnings. Double check this across all agents. (Unused helper function removed).
-- [x] error when searching in Chinese: UnicodeDecodeError in subprocess reader thread on Windows resolved by explicitly passing utf-8 encoding and errors='replace' to subprocess execution.
-- [x] Segregate AI Agent tools and general utility scripts into separate folders:
-  - Move all database query utilities, fetchers, and summarizers (e.g., ClinicalTrials, PubChem, openFDA, China CDE) into a dedicated `src/tools/` or `src/agents/tools/` folder to serve as the agent registry.
-  - Keep `src/utils/` focused exclusively on non-agent scripts (e.g., PDF compilation, CLI formatting, ASCII art rendering, test suites).
-- [ ] **Broad Scan Pipeline Refactoring:**
-  - Detailed design, directory restructuring, and implementation plans for the four major refactoring tasks (Database Reconciliation, LLM Synonym Extraction, Table Module Separation, and Concurrency) are documented in [bdscan_refactor.md](file:///f:/AIML%20projects/biotech-analyst-cli/docs/bdscan_refactor.md).
+## Phase 6: Code Quality, Windows Compatibility & Directory Restructuring
+
+- [x] **Strict Error Policy (No Fallbacks):** Remove automatic fallbacks in `context_agent` so execution terminates loudly upon failure.
+- [x] **Windows Encoding Fix:** Resolve Chinese search `UnicodeDecodeError` in Windows reader thread by forcing UTF-8 and replacement handling.
+- [x] **Curator Isolation:** Remove duplicate learning update helpers across all agents; isolate learning edits strictly to `curator_agent.py`.
+- [x] **Agent Tools Segregation:** Reorganize folder layout: move programmatic database query fetchers/summarizers into `src/tools/` acting as the agent tools registry, and keep `src/utils/` for helper modules (like PDF, table formats, CLI speech bubble).
+- [x] **Text Table Formatting:** Format the competitive matrix and landscape output files with text Unicode box-drawers and `#` row numbering.
+
+---
+
+## Phase 7: Data Integrity & Broad Scan Refactoring
+
+- [x] **Synonym and Registry Audit:** Confirm the search logic across all 8 registries and ensure de-duplicated registry tables are cleanly consolidated without text deletion.
+- [x] **Synonym Grouping and Merging:** Ensure multi-source assets representing the same molecule under different synonyms are successfully merged in the master table.
+- [x] **Web Search Column Cleanup:** Sync columns populated by the Web Search agent with standard landscape columns (e.g. Selectivity, Key Efficacy, Upcoming Milestones) and drop redundant columns.
+- [x] **Asset Name AI Classification:** Prevent general modality terms (like `HER2` or `immunotherapy`) from sneaking into individual asset names by leveraging AI-based classification over brittle heuristic blocklists.
+- [x] **LLM Client Key Errors Resolution:** Track down and fix Gemini/DeepSeek routing errors (e.g. 400 invalid API key) where active provider configuration was mismatched in `learning.md`.
+- [x] **Broad Scan Refactoring Spec:** Create comprehensive architectural design specifications and plans in `docs/bdscan_refactor.md` for reconciliation mapper, synonym extractor, modular landscape compile, and concurrency.
+
+---
+
+## Phase 8: Advanced Config Capabilities & Portable Settings
+
+- [x] **Portable Configuration:** Save settings path strings generically (using `~` for user desktop directory) to prevent exposing local machine-specific home folders in `.env`.
+- [x] **Active Settings CLI Inspection (`ba config show`):** Implement subcommand to display all settings profiles and masked API credentials.
+- [x] **LLM Settings Dynamic Control (`ba config llm`):** Implement subcommand to switch LLM provider and model, dynamically prompting for missing keys while maintaining non-interactive argument usage.
+
+---
+## Phase 9: Broad Scan Pipeline Refactoring
+
+- [x] **Landscape Monolith Decomposition:** Deconstruct `generate_landscape_table.py` monolith into modular submodules under `src/utils/landscape/` (`table_formatters.py`, `config_builder.py`, `table_builder.py`, `exporters.py`), and migrate LLM classifier to `src/tools/classify_interventions.py`.
+- [x] **Database Result Reconciliation:** Implement the Reconciliation Mapper (`src/utils/landscape/reconciliation.py`) to map and merge 8 database outputs into a unified `reconciled.json` layout, using LLM-primary matching.
+- [x] **LLM-Based Alias Resolution:** Extend `classify_interventions()` to support structured synonyms, modalities, and targets JSON output. Implement a zero-hallucination synonym provenance verification.
+- [x] **Pipeline Concurrency:** Speed up registry querying (8 concurrent workers) and qualitative web research (4 concurrent workers) using `ThreadPoolExecutor`. Implement a thread-safe registry lock (`_registry_lock`) to skip redundant web searches.
+
+---
+
+## Next Steps
+
+- [ ] Run full end-to-end regression testing on a broad scan pathway (e.g. `CLDN18.2`) to compare pre- and post-refactor table formats and ensure 100% equivalence.
+- [ ] Complete manual developer testing of the concurrent database searches and lock-protected asset research.
+- [ ] Delete the temporary refactoring specification file `docs/bdscan_refactor.md`.

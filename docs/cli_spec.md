@@ -19,13 +19,27 @@ All commands are executed using `uv run ba <command>` or via the global activate
 * **Flow:**
   1. Prompts for `Full Name` (uses existing config default if present).
   2. Prompts for `Email Address`.
-  3. Prompts for `Base Folder` target for all research outputs.
+  3. Prompts for `Base Folder` target for all research outputs (e.g. `~/Desktop/AI_Native_2026`). Stored as a generic path in `.env` and expanded on-the-fly at runtime.
   4. Interactive confirmation: "Would you like to configure LLM settings?".
      * Prompts to select the active `LLM Provider` (`gemini`, `openrouter`, or `deepseek`).
      * Prompts for the API key of the selected provider.
      * Prompts to type the custom model name to use for that provider.
   5. Saves configuration settings directly to `.env` in the current folder, retaining legacy keys and preferences for other non-active providers.
   6. Renders a masked configuration summary.
+
+### `ba config llm [provider] [model]`
+* **Objective:** Switch active LLM provider and/or model, or configure provider-specific API credentials.
+* **Arguments:**
+  * `provider` (optional): The LLM provider name (`gemini`, `openrouter`, `deepseek`).
+  * `model` (optional): The custom model name for the selected provider.
+* **Behavior:**
+  * If arguments are omitted, prompts the user interactively.
+  * Reuses previously configured keys unless the key is missing or interactive prompts require an update.
+  * Saves changes to `.env` and displays the updated active configuration.
+
+### `ba config show`
+* **Objective:** Display current configuration profile status and masked credentials.
+* **Output:** Displays user name, email, research folder, active LLM provider/model, and API keys for all providers with masking applied.
 
 ---
 
@@ -46,10 +60,13 @@ All commands are executed using `uv run ba <command>` or via the global activate
   * `action` (required): `new` or `rerun`.
   * `query` (optional, for `new` action): The target pathway search query (e.g. `"Claudin 18.2 ADC"` or `"Claudin 18.2 pancreatic cancer"`). If not provided on the command line, the user will be prompted to enter it. The pipeline automatically extracts the target name, English/Mandarin search synonyms, and modality filters from this query.
   * `rerun`: Allows selecting an existing scan directory and re-runs the pipeline.
-* **Options:** None required.
+* **Options:**
+  * `--sequential`: Force sequential execution across databases and assets (disables thread pools for easier debugging and network/API rate-limit avoidance).
 * **Output Folders:**
   Creates a folder inside the configured base directory: `{YYYYMMDD}_{Target}_Scan/`
-  * `{Target}_Scan/research/`: Contains context overview (`context.md`), source-specific query tables, the master landscape table, and intermediate researcher logs.
+  * `{Target}_Scan/database_json/`: Contains raw registry JSON outputs (`*_ct_*.json`, `*_cdirect_*.json`, etc.), the reconciliation log `reconciliation_log.json`, the synonym config `asset_config.json`, and the master reconciled database `reconciled.json`.
+  * `{Target}_Scan/web_search/`: Contains sequential logs of the qualitative asset web research.
+  * `{Target}_Scan/research/`: Contains the target pathway summary (`context.md`), and the final compiled competitive landscape table (`landscape_table.md` & `landscape_table.csv`).
   * `{Target}_Scan/final_output/`: Contains the summarized competitive table, final synthesized report, and compiled paginated PDF.
 
 ---
