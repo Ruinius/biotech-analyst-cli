@@ -1,6 +1,7 @@
 import json
 import logging
 import queue
+import random
 import sys
 import threading
 import time
@@ -13,20 +14,24 @@ logger = logging.getLogger(__name__)
 
 
 class LLMQueueManager:
-    def __init__(self):
+    def __init__(self, num_workers: int = 4):
         self.queue = queue.Queue()
         self.lock = threading.Lock()
+        self.worker_threads = []
+        self.num_workers = num_workers
         self.worker_thread = None
         self._stop_event = threading.Event()
 
     def start_worker(self):
         with self.lock:
-            if self.worker_thread is None or not self.worker_thread.is_alive():
-                self._stop_event.clear()
-                self.worker_thread = threading.Thread(
-                    target=self._worker_loop, daemon=True
-                )
-                self.worker_thread.start()
+            # Clean up dead threads
+            self.worker_threads = [t for t in self.worker_threads if t.is_alive()]
+            while len(self.worker_threads) < self.num_workers:
+                t = threading.Thread(target=self._worker_loop, daemon=True)
+                self.worker_threads.append(t)
+                t.start()
+            if self.worker_threads:
+                self.worker_thread = self.worker_threads[0]
 
     def _worker_loop(self):
         while not self._stop_event.is_set():
@@ -58,8 +63,15 @@ class LLMClient:
             self.settings = load_config()
         except Exception:
             self.settings = None
+        # Define default client timeout (60s read, 10s connect) to prevent ReadTimeout
+        self.timeout = httpx.Timeout(60.0, connect=10.0)
 
-    def query(self, prompt: str, system_instruction: str | None = None) -> str:
+    def query(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        stream: bool = True,
+    ) -> str:
         """Call the configured LLM API provider with the given prompt."""
         if not self.settings:
             return "Error: Configuration settings not found."
@@ -82,7 +94,9 @@ class LLMClient:
         if getattr(self, "_sync_mode", False) or "pytest" in sys.modules:
             with _queue_manager.lock:
                 try:
-                    return self._execute_query(prompt, system_instruction)
+                    return self._execute_query(
+                        prompt, system_instruction, stream=stream
+                    )
                 except Exception as e:
                     return f"Failed to call {provider.capitalize()} API: {str(e)}"
 
@@ -91,7 +105,12 @@ class LLMClient:
 
         result_queue = queue.Queue()
         _queue_manager.queue.put(
-            (self._execute_query, (prompt, system_instruction), {}, result_queue)
+            (
+                self._execute_query,
+                (prompt, system_instruction),
+                {"stream": stream},
+                result_queue,
+            )
         )
 
         res, err = result_queue.get()
@@ -99,7 +118,12 @@ class LLMClient:
             return f"Failed to call {provider.capitalize()} API: {str(err)}"
         return res
 
-    def _execute_query(self, prompt: str, system_instruction: str | None = None) -> str:
+    def _execute_query(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        stream: bool = True,
+    ) -> str:
         provider = (self.settings.llm_provider or "gemini").lower()
         if provider == "gemini":
             call_func = self._call_gemini
@@ -110,7 +134,9 @@ class LLMClient:
         else:
             raise ValueError(f"Unknown/Unsupported LLM provider '{provider}'.")
 
-        return self._make_http_call_with_retries(call_func, prompt, system_instruction)
+        return self._make_http_call_with_retries(
+            call_func, prompt, system_instruction, stream=stream
+        )
 
     def _make_http_call_with_retries(self, call_func, *args, **kwargs) -> str:
         max_connection_retries = getattr(self, "max_connection_retries", 3)
@@ -139,6 +165,8 @@ class LLMClient:
                         )
                         raise
                     delay = initial_llm_delay * (llm_backoff ** (llm_attempt - 1))
+                    # Add random retry jitter (+/- 20%) to avoid concurrent thread rate limit sync
+                    delay = delay * random.uniform(0.8, 1.2)
                     logger.warning(
                         f"LLM rate limit or server error (HTTP {status_code}) detected. "
                         f"Retrying at LLM level in {delay:.1f}s (Attempt {llm_attempt}/{max_llm_retries})...."
@@ -160,13 +188,20 @@ class LLMClient:
                 delay = initial_connection_delay * (
                     connection_backoff ** (conn_attempt - 1)
                 )
+                # Add random retry jitter (+/- 20%) to avoid thundering herd on network drops
+                delay = delay * random.uniform(0.8, 1.2)
                 logger.warning(
                     f"API Connection error: {e}. "
                     f"Retrying at connection level in {delay:.1f}s (Attempt {conn_attempt}/{max_connection_retries})..."
                 )
                 time.sleep(delay)
 
-    def _call_gemini(self, prompt: str, system_instruction: str | None = None) -> str:
+    def _call_gemini(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        stream: bool = True,
+    ) -> str:
         """Invoke Gemini API directly using HTTP POST (streaming or non-streaming)."""
         api_key = self.settings.gemini_api_key
         model = self.settings.llm_model or "gemini-3-flash-preview"
@@ -178,10 +213,10 @@ class LLMClient:
 
         in_test = "pytest" in sys.modules
 
-        if in_test:
-            # Fallback to standard post so existing mocks/tests don't break
+        if in_test or not stream:
+            # Fallback to standard post (non-streaming)
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.post(url, json=payload)
                 response.raise_for_status()
                 res_data = response.json()
@@ -194,7 +229,7 @@ class LLMClient:
         sys.stdout.flush()
 
         full_response = []
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             with client.stream("POST", url, json=payload) as response:
                 if response.status_code >= 400:
                     response.read()
@@ -215,7 +250,10 @@ class LLMClient:
         return "".join(full_response)
 
     def _call_openrouter(
-        self, prompt: str, system_instruction: str | None = None
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        stream: bool = True,
     ) -> str:
         """Invoke OpenRouter API (streaming or non-streaming)."""
         api_key = self.settings.openrouter_api_key
@@ -234,8 +272,8 @@ class LLMClient:
 
         in_test = "pytest" in sys.modules
 
-        if in_test:
-            with httpx.Client(timeout=30.0) as client:
+        if in_test or not stream:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 res_data = response.json()
@@ -248,7 +286,7 @@ class LLMClient:
         sys.stdout.flush()
 
         full_response = []
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code >= 400:
                     response.read()
@@ -271,7 +309,12 @@ class LLMClient:
         sys.stdout.flush()
         return "".join(full_response)
 
-    def _call_deepseek(self, prompt: str, system_instruction: str | None = None) -> str:
+    def _call_deepseek(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        stream: bool = True,
+    ) -> str:
         """Invoke DeepSeek API (streaming or non-streaming)."""
         api_key = self.settings.deepseek_api_key
         url = "https://api.deepseek.com/chat/completions"
@@ -289,8 +332,8 @@ class LLMClient:
 
         in_test = "pytest" in sys.modules
 
-        if in_test:
-            with httpx.Client(timeout=30.0) as client:
+        if in_test or not stream:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 res_data = response.json()
@@ -303,7 +346,7 @@ class LLMClient:
         sys.stdout.flush()
 
         full_response = []
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=self.timeout) as client:
             with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code >= 400:
                     response.read()

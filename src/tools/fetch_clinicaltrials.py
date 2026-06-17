@@ -12,7 +12,7 @@ import urllib.parse
 import urllib.request
 
 
-def fetch_studies(term, limit=50):
+def fetch_studies(term, limit=200):
     results = []
     page_token = None
     page_size = min(limit, 100)  # Fetch up to 100 per page to be efficient
@@ -83,7 +83,7 @@ def main():
     parser.add_argument(
         "--limit",
         type=int,
-        default=50,
+        default=200,
         help="Maximum number of studies to fetch per term",
     )
 

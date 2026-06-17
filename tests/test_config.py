@@ -267,7 +267,7 @@ def test_llm_queue_manager_sequential():
 
     from src.services.llm_client import LLMQueueManager
 
-    mgr = LLMQueueManager()
+    mgr = LLMQueueManager(num_workers=1)
     mgr.start_worker()
 
     execution_order = []
@@ -291,7 +291,7 @@ def test_llm_queue_manager_sequential():
     assert res1 == 1
     assert res2 == 2
     # Even though job 2 has a much smaller sleep delay, it must finish AFTER job 1
-    # because the queue executes them sequentially.
+    # because the queue executes them sequentially with 1 worker.
     assert execution_order == [1, 2]
 
     # Stop worker
@@ -299,6 +299,48 @@ def test_llm_queue_manager_sequential():
     mgr.queue.put(None)
     if mgr.worker_thread:
         mgr.worker_thread.join(timeout=1.0)
+
+
+def test_llm_queue_manager_concurrent():
+    import queue
+    import time
+
+    from src.services.llm_client import LLMQueueManager
+
+    mgr = LLMQueueManager(num_workers=2)
+    mgr.start_worker()
+
+    execution_order = []
+
+    def task_fn(val, delay):
+        time.sleep(delay)
+        execution_order.append(val)
+        return val
+
+    res_q1 = queue.Queue()
+    res_q2 = queue.Queue()
+
+    # Push job 1 (slow) then job 2 (fast)
+    mgr.queue.put((task_fn, (1, 0.1), {}, res_q1))
+    # Give it a tiny moment to start task 1
+    time.sleep(0.01)
+    mgr.queue.put((task_fn, (2, 0.01), {}, res_q2))
+
+    # Wait for results
+    res2, err2 = res_q2.get()
+    res1, err1 = res_q1.get()
+
+    assert res1 == 1
+    assert res2 == 2
+    # Because they run concurrently, job 2 (fast) must finish BEFORE job 1 (slow)
+    assert execution_order == [2, 1]
+
+    # Stop worker
+    mgr._stop_event.set()
+    for _ in range(2):
+        mgr.queue.put(None)
+    for t in mgr.worker_threads:
+        t.join(timeout=1.0)
 
 
 def test_cli_config_show(temp_config_path):

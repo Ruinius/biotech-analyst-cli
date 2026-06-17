@@ -111,3 +111,9 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] It looks like all the json files and database search outputs are still being dumped in the tmp folder instead of the actual scan folder.
 - [ ] Complete manual developer testing of the concurrent database searches and lock-protected asset research.
 - [ ] Delete the temporary refactoring specification file `docs/bdscan_refactor.md`.
+- [ ] Double check that there is playwright searching through CDE right now
+- [x] Increase the results from clinicaltrials.gov from 50 to 200
+- [ ] Double check when is learning.md being used. It needs to be actually part of the context for database search and web search, and the respective agents need to actually have the agency to make use of these learnings when deciding to call tools.
+- [x] Increase or configure the read timeout specifically for the streaming HTTP client in [llm_client.py](file:///f:/AIML%20projects/biotech-analyst-cli/src/services/llm_client.py) (e.g., using `httpx.Timeout(60.0, connect=10.0)`) to prevent `httpx.ReadTimeout` errors during API server load or long generation stalls.
+- [x] Optimize and decrease the batch size of the assets parsed in parallel in the orchestrators to keep the LLM prompt payloads smaller, reduce time-to-first-token latency, and avoid timeouts.
+- [x] Explore concurrency for database result reconciliation: modify `classify_interventions()` to submit batch tasks in parallel, and enhance `LLMQueueManager` and `LLMClient` to support concurrent worker pools, rate-limiting jitter, and buffered/non-streaming console outputs to prevent interleaved logs.

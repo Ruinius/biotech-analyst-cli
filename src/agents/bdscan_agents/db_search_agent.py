@@ -37,7 +37,7 @@ def run_cmd(cmd_args: list[str]) -> tuple[bool, str, str]:
 
 
 def search_clinicaltrials(
-    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+    folder_safe_name: str, term: str, limit: int = 200, db_json_dir: str | None = None
 ) -> str:
     if not db_json_dir:
         raise ValueError("db_json_dir is required; fallback to tmp/ has been removed.")
@@ -456,6 +456,7 @@ class DatabaseSearchAgent:
         turn_budget = 4
         source_log_lines = []
 
+        default_limit = 200 if tool_name == "search_clinicaltrials" else 50
         system_instruction = (
             f"You are Dr. Hops' Database Search Agent specialized in '{source_name}'.\n"
             "Your objective is to find trials, products, and preclinical/clinical info "
@@ -463,7 +464,7 @@ class DatabaseSearchAgent:
             "You have a budget of up to 4 turns.\n"
             "In each turn, you can call the tool once using this exact syntax:\n"
             f'[TOOL_CALL: {tool_name}(term="synonym_here")]\n'
-            "Or with limit if supported (e.g. limit=50).\n"
+            f"Or with limit if supported (e.g. limit={default_limit}).\n"
             "Once you have sufficient results, or on Turn 4, write a comprehensive Markdown summary "
             "reviewing the findings and end your response with the [FINALIZE] tag.\n"
             "Do NOT hallucinate study IDs or names."
@@ -517,7 +518,9 @@ class DatabaseSearchAgent:
                     if current_term_index < len(synonyms)
                     else target_name
                 )
-                limit = args.get("limit") or 50
+                limit = args.get("limit") or (
+                    200 if called_tool == "search_clinicaltrials" else 50
+                )
 
                 formatting.print_info(
                     f"    Executing tool {called_tool} for '{term_to_search}'..."

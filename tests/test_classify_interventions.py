@@ -150,7 +150,7 @@ def test_classify_batch_size_respected(mock_llm_cls):
 
     mock_client = MagicMock()
     # Return all as assets
-    mock_client.query.side_effect = lambda prompt, system: json.dumps(
+    mock_client.query.side_effect = lambda prompt, system, *args, **kwargs: json.dumps(
         {
             "asset": re.findall(r'"([A-Za-z0-9\-]+)"', prompt.split("Input names:")[1]),
             "background": [],

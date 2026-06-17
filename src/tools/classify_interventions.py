@@ -13,6 +13,7 @@ alias resolution logic. Imported by:
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.services.llm_client import LLMClient
 
@@ -40,7 +41,7 @@ def classify_interventions(
     names: list,
     target_name: str,
     target_synonyms: list | None = None,
-    batch_size: int = 30,
+    batch_size: int = 15,
 ) -> AssetList:
     """
     Use the configured LLM to classify raw intervention names from clinical
@@ -75,8 +76,7 @@ def classify_interventions(
         f"({total_batches} batch(es) of ≤{batch_size})..."
     )
 
-    for batch_idx in range(total_batches):
-        batch = unique_names[batch_idx * batch_size : (batch_idx + 1) * batch_size]
+    def process_single_batch(batch_idx: int, batch: list) -> tuple[list, list]:
         batch_json = json.dumps(batch, ensure_ascii=False)
 
         prompt = (
@@ -112,7 +112,14 @@ def classify_interventions(
             "that does not match any approved drug name."
         )
 
-        response = client.query(prompt, system_instruction)
+        # Call with stream=False to prevent interleaved console logs
+        try:
+            response = client.query(prompt, system_instruction, stream=False)
+        except TypeError as e:
+            if "unexpected keyword argument" in str(e) and "stream" in str(e):
+                response = client.query(prompt, system_instruction)
+            else:
+                raise
 
         if (
             not response
@@ -196,7 +203,15 @@ def classify_interventions(
                 "(like chemotherapy, immunotherapy) as 'generic_or_modality'."
             )
             try:
-                audit_response = client.query(audit_prompt, audit_system)
+                try:
+                    audit_response = client.query(
+                        audit_prompt, audit_system, stream=False
+                    )
+                except TypeError as e:
+                    if "unexpected keyword argument" in str(e) and "stream" in str(e):
+                        audit_response = client.query(audit_prompt, audit_system)
+                    else:
+                        raise
                 clean_audit = audit_response.strip()
                 if clean_audit.startswith("```"):
                     clean_audit = re.sub(r"^```[a-z]*\n?", "", clean_audit)
@@ -231,6 +246,31 @@ def classify_interventions(
                     )
             valid_assets_in_batch = filtered_assets
 
+        return valid_assets_in_batch, classified_background
+
+    # We will submit batches to a ThreadPoolExecutor
+    futures_map = {}
+    batch_results = [None] * total_batches
+
+    with ThreadPoolExecutor(max_workers=min(total_batches, 4)) as executor:
+        for batch_idx in range(total_batches):
+            batch = unique_names[batch_idx * batch_size : (batch_idx + 1) * batch_size]
+            f = executor.submit(process_single_batch, batch_idx, batch)
+            futures_map[f] = batch_idx
+
+        for f in as_completed(futures_map):
+            idx = futures_map[f]
+            try:
+                batch_results[idx] = f.result()
+            except Exception:
+                # Re-raise to crash loudly as per rules
+                raise
+
+    # Print logs sequentially by batch index to keep standard output clear and un-interleaved
+    for batch_idx, result in enumerate(batch_results):
+        if result is None:
+            continue
+        valid_assets_in_batch, classified_background = result
         print(
             f"  [Classifier] Batch {batch_idx + 1}/{total_batches}: "
             f"{len(valid_assets_in_batch)} asset(s), "
