@@ -265,6 +265,9 @@ def main_bdscan(
         None,
         help="The target pathway or molecule-class search query (e.g. 'Claudin 18.2 ADC')",
     ),
+    sequential: bool = typer.Option(
+        False, "--sequential", help="Force sequential execution for debugging"
+    ),
 ):
     """Execute target pathway or molecule-class broad meta-analysis scanning."""
     if not config_exists():
@@ -355,6 +358,7 @@ def main_bdscan(
             en_list=en_list,
             zh_list=zh_list,
             modality=modality,
+            sequential=sequential,
         )
     except Exception as e:
         formatting.print_error(f"Pipeline execution failed: {e}")

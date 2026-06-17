@@ -3,8 +3,10 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from src.core.config import Settings
@@ -30,8 +32,25 @@ def run_cmd(cmd_args: list[str]) -> tuple[bool, str, str]:
         return False, "", str(e)
 
 
-# Tool Functions
-def search_clinicaltrials(folder_safe_name: str, term: str, limit: int = 50) -> str:
+# ---------------------------------------------------------------------------
+# Tool Functions — §1: dual-write to tmp/ AND {target_dir}/database_json/
+# ---------------------------------------------------------------------------
+
+
+def _copy_to_db_json(tmp_path: str, db_json_dir: str | None) -> None:
+    """Copy a raw JSON from tmp/ to database_json/ if that directory exists."""
+    if db_json_dir and os.path.exists(tmp_path):
+        os.makedirs(db_json_dir, exist_ok=True)
+        dest = os.path.join(db_json_dir, os.path.basename(tmp_path))
+        try:
+            shutil.copy2(tmp_path, dest)
+        except Exception as e:
+            print(f"Warning: Failed to copy {tmp_path} to {dest}: {e}")
+
+
+def search_clinicaltrials(
+    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_ct_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -49,6 +68,8 @@ def search_clinicaltrials(folder_safe_name: str, term: str, limit: int = 50) -> 
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing ClinicalTrials.gov fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -71,7 +92,9 @@ def search_clinicaltrials(folder_safe_name: str, term: str, limit: int = 50) -> 
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_anzctr_ctis(folder_safe_name: str, term: str, limit: int = 50) -> str:
+def search_anzctr_ctis(
+    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_anzctr_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -89,6 +112,8 @@ def search_anzctr_ctis(folder_safe_name: str, term: str, limit: int = 50) -> str
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing ANZCTR/CTIS fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -109,7 +134,9 @@ def search_anzctr_ctis(folder_safe_name: str, term: str, limit: int = 50) -> str
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_conferences(folder_safe_name: str, term: str, limit: int = 50) -> str:
+def search_conferences(
+    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_conf_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -127,6 +154,8 @@ def search_conferences(folder_safe_name: str, term: str, limit: int = 50) -> str
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing Conference abstract fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -149,7 +178,9 @@ def search_conferences(folder_safe_name: str, term: str, limit: int = 50) -> str
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_chinese_registries(folder_safe_name: str, term: str, limit: int = 50) -> str:
+def search_chinese_registries(
+    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_chreg_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -167,6 +198,8 @@ def search_chinese_registries(folder_safe_name: str, term: str, limit: int = 50)
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing Chinese Registries fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -189,17 +222,21 @@ def search_chinese_registries(folder_safe_name: str, term: str, limit: int = 50)
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_china_direct(folder_safe_name: str, term: str) -> str:
+def search_china_direct(
+    folder_safe_name: str, term: str, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_cdirect_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
 
-    # Direct search on NMPA CDE (requires chromium playwrigth installed)
+    # Direct search on NMPA CDE (requires chromium playwright installed)
     success, out, err = run_cmd(
         ["src/tools/fetch_china_direct.py", "--term", term, "--output", out_file]
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing CDE Playwright scrape for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -220,7 +257,9 @@ def search_china_direct(folder_safe_name: str, term: str) -> str:
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_ip_lens(folder_safe_name: str, term: str, limit: int = 50) -> str:
+def search_ip_lens(
+    folder_safe_name: str, term: str, limit: int = 50, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_lens_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -239,6 +278,8 @@ def search_ip_lens(folder_safe_name: str, term: str, limit: int = 50) -> str:
     if not success or not os.path.exists(out_file):
         return f"Error executing Lens.org IP fetch for '{term}': {err or out}"
 
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
+
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
         ["src/tools/summarize_ip_lens.py", "--input", out_file, "--output", sum_file]
@@ -252,7 +293,9 @@ def search_ip_lens(folder_safe_name: str, term: str, limit: int = 50) -> str:
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_pubchem(folder_safe_name: str, term: str) -> str:
+def search_pubchem(
+    folder_safe_name: str, term: str, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_pubchem_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -262,6 +305,8 @@ def search_pubchem(folder_safe_name: str, term: str) -> str:
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing PubChem fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -276,7 +321,9 @@ def search_pubchem(folder_safe_name: str, term: str) -> str:
     return f"Success. Saved raw data to {out_file}.\nSummary Preview:\n{summary_text[:3000]}"
 
 
-def search_openfda(folder_safe_name: str, term: str) -> str:
+def search_openfda(
+    folder_safe_name: str, term: str, db_json_dir: str | None = None
+) -> str:
     term_clean = term.replace(" ", "_").replace(".", "")
     out_file = f"tmp/{folder_safe_name}_openfda_{term_clean}.json"
     sum_file = out_file.replace(".json", "_sum.txt")
@@ -286,6 +333,8 @@ def search_openfda(folder_safe_name: str, term: str) -> str:
     )
     if not success or not os.path.exists(out_file):
         return f"Error executing openFDA fetch for '{term}': {err or out}"
+
+    _copy_to_db_json(out_file, db_json_dir)  # §1 dual-write
 
     # Summarize
     success_sum, out_sum, err_sum = run_cmd(
@@ -301,14 +350,26 @@ def search_openfda(folder_safe_name: str, term: str) -> str:
 
 
 class DatabaseSearchAgent:
-    """Agent executing 4-turn state search loop sequentially for each of the eight databases."""
+    """Agent executing 4-turn search loop for each of the eight databases.
 
-    def __init__(self, settings: Settings, folder_safe_name: str, target_dir: Path):
+    In §3 the loop is sequential. §4 adds concurrent execution via
+    ThreadPoolExecutor when sequential=False (the default).
+    """
+
+    def __init__(
+        self,
+        settings: Settings,
+        folder_safe_name: str,
+        target_dir: Path,
+        sequential: bool = False,
+    ):
         self.settings = settings
         self.folder_safe_name = folder_safe_name
         self.target_dir = target_dir
+        self.sequential = sequential
         self.client = LLMClient()
         self.logs = []
+        self._db_json_dir = str(target_dir / "database_json") if target_dir else None
 
     def execute_search_pipeline(
         self,
@@ -332,13 +393,51 @@ class DatabaseSearchAgent:
         research_dir = self.target_dir / "research"
         research_dir.mkdir(parents=True, exist_ok=True)
 
-        for idx, (source_name, tool_name, synonyms) in enumerate(sources, 1):
-            formatting.print_info(
-                f"[{idx}/8] Commencing search sweep for source: {source_name}..."
-            )
-            self.run_loop_for_source(
-                idx, source_name, tool_name, synonyms, target_name, modality
-            )
+        if self.sequential:
+            # §3-compatible sequential execution path (also used with --sequential flag in §4)
+            for idx, (source_name, tool_name, synonyms) in enumerate(sources, 1):
+                formatting.print_info(
+                    f"[{idx}/8] Commencing search sweep for source: {source_name}..."
+                )
+                self.run_loop_for_source(
+                    idx, source_name, tool_name, synonyms, target_name, modality
+                )
+        else:
+            # §4 concurrent execution — each source runs in its own thread
+            # LLM calls are still serialized via the FIFO queue in LLMClient.
+            # Expected speedup: ~2–4x from parallelized network I/O and subprocess calls.
+            errors: list[tuple[str, Exception]] = []
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                future_to_source = {
+                    executor.submit(
+                        self.run_loop_for_source,
+                        idx,
+                        source_name,
+                        tool_name,
+                        synonyms,
+                        target_name,
+                        modality,
+                    ): (idx, source_name)
+                    for idx, (source_name, tool_name, synonyms) in enumerate(sources, 1)
+                }
+                for future in as_completed(future_to_source):
+                    idx, source_name = future_to_source[future]
+                    try:
+                        future.result()
+                    except Exception as exc:
+                        errors.append((source_name, exc))
+                        formatting.print_warning(
+                            f"Source '{source_name}' failed: {exc}"
+                        )
+
+            # Fail if both core sources failed
+            core_sources = {"ClinicalTrials.gov", "NMPA CDE Direct Search"}
+            failed_sources = {e[0] for e in errors}
+            core_succeeded = core_sources - failed_sources
+            if not core_succeeded:
+                raise RuntimeError(
+                    f"Critical sources failed: {errors}. Cannot continue pipeline."
+                )
 
         # Run deterministic merging after completing all sweeps
         self.deterministic_merge()
@@ -485,7 +584,11 @@ class DatabaseSearchAgent:
                     break
 
     def deterministic_merge(self):
-        """Deterministic de-duplication and merging of Clinical Trials and CDE Scrapes."""
+        """Deterministic de-duplication and merging of Clinical Trials and CDE Scrapes.
+
+        §1: Also copies merged files to {target_dir}/database_json/ for the
+        reconciliation mapper and landscape_compiler_agent to consume.
+        """
         formatting.speak(
             "Ribosomes active! Commencing deterministic append/de-duplicate merging schedules..."
         )
@@ -577,6 +680,8 @@ class DatabaseSearchAgent:
         formatting.print_success(
             f"Merged {len(merged_trials)} clinical trial records to {merged_ct_file}"
         )
+        # §1: Also copy merged CT file to database_json/
+        _copy_to_db_json(merged_ct_file, self._db_json_dir)
 
         # 2. Merge China Direct CDE Scrapes
         merged_china = []
@@ -605,3 +710,5 @@ class DatabaseSearchAgent:
         formatting.print_success(
             f"Merged {len(unique_china)} direct CDE records to {merged_china_file}"
         )
+        # §1: Also copy merged China file to database_json/
+        _copy_to_db_json(merged_china_file, self._db_json_dir)

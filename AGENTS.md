@@ -20,6 +20,10 @@ This file indexes the workspace structure and defines architectural rules/constr
   - `test_config.py`: LLM client queue, config manager, and retry tests.
   - `test_query_parser.py`: Regex and LLM-based query parsing tests.
   - `run_tests.py`: Subprocess command-line integration tests for fetchers/summarizers.
+  - `test_landscape_modules.py`: Tests for modularized landscape table generation.
+  - `test_classify_interventions.py`: Tests for LLM-based intervention classification and alias resolution.
+  - `test_reconciliation.py`: Tests for broad scan data reconciliation and mapper logic.
+  - `test_concurrency.py`: Tests for thread pool query execution and concurrent web research locking.
 - `src/`: Source code package.
   - `cli/main.py`: Command router and main execution loop.
   - `core/`: Config settings and pipeline orchestrators.
@@ -31,10 +35,17 @@ This file indexes the workspace structure and defines architectural rules/constr
     - `bdscan_agents/`: Broad scan agents (`context_agent.py`, `db_search_agent.py`, `landscape_compiler_agent.py`, `asset_research_agent.py`, `curator_agent.py`, `synthesis_agent.py`).
     - `deepdive_agents/`: Deep-dive diligence agents.
   - `services/llm_client.py`: Thread-safe FIFO queue LLM interface (Gemini, OpenRouter, DeepSeek).
-  - `tools/`: Programmatic database fetchers and summarizers (agent tools registry).
+  - `tools/`: Programmatic database fetchers, summarizers, and classifier tools.
+    - `classify_interventions.py`: LLM-based intervention classification and verification.
     - `fetch_*.py` & `summarize_*.py`: API/scraping queries for sources (ClinicalTrials, PubChem, openFDA, ANZCTR/CTIS, conferences, Chinese registries, NMPA CDE direct, Lens.org).
   - `utils/`: Data parsing, reporting, and CLI utilities.
-    - `generate_landscape_table.py`: Competitive landscape table compiler (Markdown/CSV). Uses LLM-based `classify_interventions()`.
+    - `generate_landscape_table.py`: Re-export shim for landscape table compilation.
+    - `landscape/`: Modular landscape table compilation package.
+      - `table_formatters.py`: Constants and parsing utilities.
+      - `config_builder.py`: Synonym grouping and configuration discovery.
+      - `table_builder.py`: Table construction loop.
+      - `exporters.py`: CSV and text formatters.
+      - `reconciliation.py`: Multi-source database reconciliation mapper.
     - `validate_report.py`: Integrity and quality gate checks for compiled reports.
     - `convert_md_to_pdf.py`: Paginated PDF compiler.
     - `query_parser.py`: Query processing with local fallbacks.

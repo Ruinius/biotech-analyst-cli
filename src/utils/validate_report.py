@@ -281,6 +281,55 @@ def main():
 
     has_errors = False
 
+    # --- 0. CONFIG PROVENANCE TRACE VERIFICATION ---
+    print("\n[0/4] Config Provenance Trace Verification...")
+    raw_texts = []
+    if ct_data:
+        raw_texts.append(json.dumps(ct_data, ensure_ascii=False).lower())
+    if china_data:
+        raw_texts.append(
+            json.dumps(list(china_data.values()), ensure_ascii=False).lower()
+        )
+    if chreg_data:
+        raw_texts.append(
+            json.dumps(list(chreg_data.values()), ensure_ascii=False).lower()
+        )
+
+    db_json_dir = os.path.dirname(args.config) if args.config else None
+    if db_json_dir and os.path.exists(db_json_dir):
+        for filename in os.listdir(db_json_dir):
+            if filename.endswith(".json") and filename not in [
+                "reconciled.json",
+                "asset_config.json",
+            ]:
+                try:
+                    with open(
+                        os.path.join(db_json_dir, filename), encoding="utf-8"
+                    ) as f:
+                        raw_texts.append(f.read().lower())
+                except Exception:
+                    pass
+
+    config_provenance_errors = []
+    for primary_key, details in config.items():
+        aliases = details.get("aliases", [])
+        for name in [primary_key] + aliases:
+            name_lower = name.lower()
+            if not any(name_lower in t for t in raw_texts):
+                config_provenance_errors.append(name)
+
+    if config_provenance_errors:
+        has_errors = True
+        print(
+            "  CRITICAL ERROR: Found names in config that have no provenance in raw database JSONs!"
+        )
+        for name in config_provenance_errors:
+            print(f"    - '{name}' is in config but not in any raw source files.")
+    else:
+        print(
+            "  PASS: All config asset names and aliases have validated provenance in raw database JSONs."
+        )
+
     # --- 1. ZERO-HALLUCINATION CHECK (GLOBAL TRIAL ID CHECK) ---
     print("\n[1/4] Zero-Hallucination Audit (Registry Verification)...")
     hallucinated_trials = []

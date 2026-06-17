@@ -1,10 +1,19 @@
+"""
+Landscape Compiler Agent — §3 refactor: direct Python imports, no subprocess.
+
+Orchestrates compilation of the initial competitive landscape table by:
+1. Loading raw CT + China CDE data from tmp/ (§3) / database_json/ (§1+)
+2. Calling build_landscape_table() directly via Python import
+3. Appending Web-research placeholder columns
+4. Writing aligned landscape_table.md and landscape_table.csv to {target_dir}/research/
+"""
+
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 from src.utils import formatting
-from src.utils.generate_landscape_table import md_table_to_csv, md_table_to_text_table
+from src.utils.landscape.exporters import md_table_to_csv, md_table_to_text_table
+from src.utils.landscape.table_builder import load_and_build_from_files
 
 
 def compile_landscape_table(
@@ -16,46 +25,65 @@ def compile_landscape_table(
     """Compile raw sources into the initial master landscape table under research/."""
     formatting.print_info("Compiling master landscape table...")
 
-    merged_ct_file = f"tmp/{folder_safe_name}_clinicaltrials.json"
-    merged_china_file = f"tmp/{folder_safe_name}_china_direct.json"
-    temp_table_out = f"tmp/{folder_safe_name}_initial_landscape.md"
     master_table_out = target_dir / "research" / "landscape_table.md"
-
-    # Make sure target folder exists
     master_table_out.parent.mkdir(parents=True, exist_ok=True)
 
-    # Run the existing generate_landscape_table.py script
-    my_env = os.environ.copy()
-    my_env["PYTHONIOENCODING"] = "utf-8"
-    cmd_args = [
-        sys.executable,
-        "src/utils/generate_landscape_table.py",
-        "--clinicaltrials",
-        merged_ct_file,
-        "--china-direct",
-        merged_china_file,
-        "--output",
-        temp_table_out,
-    ]
-    if target_name:
-        cmd_args += ["--target-name", target_name]
-    if target_synonyms:
-        cmd_args += ["--target-synonyms", ",".join(target_synonyms)]
+    # -----------------------------------------------------------------------
+    # Resolve input paths — prefer database_json/ (§1+), fall back to tmp/ (§3)
+    # -----------------------------------------------------------------------
+    database_json_dir = target_dir / "database_json"
 
-    formatting.print_info("Running legacy landscape table generation script...")
-    res = subprocess.run(
-        cmd_args,
-        env=my_env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+    def _resolve(db_json_pattern: str, tmp_pattern: str) -> str | None:
+        """Return the first matching file in database_json/ then tmp/."""
+        import glob as _glob
+
+        db_matches = _glob.glob(str(database_json_dir / db_json_pattern))
+        if db_matches:
+            return db_matches[0]
+        tmp_matches = _glob.glob(tmp_pattern)
+        return tmp_matches[0] if tmp_matches else None
+
+    merged_ct_file = _resolve(
+        f"{folder_safe_name}_clinicaltrials.json",
+        f"tmp/{folder_safe_name}_clinicaltrials.json",
     )
-    if res.returncode != 0 or not os.path.exists(temp_table_out):
-        formatting.print_error(
-            f"Landscape table generation failed: {res.stderr or res.stdout}"
+    merged_china_file = _resolve(
+        f"{folder_safe_name}_china_direct.json",
+        f"tmp/{folder_safe_name}_china_direct.json",
+    )
+
+    # Also check for plain tmp/ fallback paths (§3 backward-compat)
+    if not merged_ct_file and os.path.exists(
+        f"tmp/{folder_safe_name}_clinicaltrials.json"
+    ):
+        merged_ct_file = f"tmp/{folder_safe_name}_clinicaltrials.json"
+    if not merged_china_file and os.path.exists(
+        f"tmp/{folder_safe_name}_china_direct.json"
+    ):
+        merged_china_file = f"tmp/{folder_safe_name}_china_direct.json"
+
+    temp_table_out = target_dir / "research" / "_initial_landscape_base.md"
+
+    # -----------------------------------------------------------------------
+    # Run build_landscape_table via direct import (no subprocess)
+    # -----------------------------------------------------------------------
+    formatting.print_info("Building landscape table via direct import...")
+    try:
+        load_and_build_from_files(
+            clinicaltrials_path=merged_ct_file,
+            china_direct_path=merged_china_file,
+            config_path=None,
+            existing_report_path=None,
+            output_path=str(temp_table_out),
+            target_name=target_name,
+            target_synonyms=target_synonyms,
+            database_json_dir=str(database_json_dir)
+            if database_json_dir.exists()
+            else None,
         )
-        # Write dummy empty table (with # column) so pipeline doesn't crash entirely
+    except Exception as e:
+        formatting.print_error(f"Landscape table generation failed: {e}")
+        # Write dummy empty table so pipeline doesn't crash entirely
         headers = "| # | Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
         divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
         dummy_md = f"{headers}\n{divider}\n"
@@ -64,21 +92,22 @@ def compile_landscape_table(
         csv_out.write_text(md_table_to_csv(dummy_md), encoding="utf-8-sig")
         return master_table_out
 
-    # Read the generated table and append Web-research columns
+    if not temp_table_out.exists():
+        formatting.print_error("Landscape table generation produced no output file.")
+        return master_table_out
+
+    # -----------------------------------------------------------------------
+    # Append Web-research placeholder columns
+    # -----------------------------------------------------------------------
     with open(temp_table_out, encoding="utf-8") as f:
         lines = f.readlines()
 
-    # The generated .md already has the # column from generate_landscape_table.py.
-    # We just need to append the 4 Web columns.
-    # idx 0 = header, idx 1 = divider, idx >= 2 = data rows
     modified_lines = []
     for idx, line in enumerate(lines):
         line = line.strip()
         if not line:
             continue
-        # Split columns
         cols = [c.strip() for c in line.split("|")]
-        # Since line starts and ends with '|', cols[0] and cols[-1] are empty
         if len(cols) < 3:
             modified_lines.append(line)
             continue
@@ -106,7 +135,6 @@ def compile_landscape_table(
             ]
             modified_lines.append("| " + " | ".join(new_data) + " |")
 
-    # Save to research/landscape_table.md with column-aligned formatting
     final_md = "\n".join(modified_lines) + "\n"
     aligned_md = md_table_to_text_table(final_md)
     master_table_out.write_text(aligned_md, encoding="utf-8")
@@ -119,6 +147,12 @@ def compile_landscape_table(
     csv_out.write_text(md_table_to_csv(final_md), encoding="utf-8-sig")
     formatting.print_success(f"Saved CSV table at {csv_out}")
 
+    # Clean up temporary base file
+    try:
+        temp_table_out.unlink(missing_ok=True)
+    except Exception:
+        pass
+
     return master_table_out
 
 
@@ -130,5 +164,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("--folder-name", required=True)
     parser.add_argument("--target-dir", required=True)
+    parser.add_argument("--target-name", default="")
+    parser.add_argument("--target-synonyms", default="")
     args = parser.parse_args()
-    compile_landscape_table(args.folder_name, Path(args.target_dir))
+    synonyms = [s.strip() for s in args.target_synonyms.split(",") if s.strip()]
+    compile_landscape_table(
+        args.folder_name, Path(args.target_dir), args.target_name, synonyms
+    )

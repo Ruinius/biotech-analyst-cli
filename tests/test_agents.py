@@ -259,6 +259,9 @@ def mock_query_fn(prompt, system_instruction=None):
         return "## 1. Biology and Scientific Rationale\nMock biology.\n\n## 2. Clinical Settings and Disease Areas\nMock clinical.\n\n## 3. Modality Considerations\nMock modality."
 
     sys_lower = system_instruction.lower()
+    # Use prompt without history to avoid checking old turns
+    current_prompt = prompt.split("History:")[0]
+
     if "context" in sys_lower or "molecular biologist" in sys_lower:
         return (
             "## 1. Biology and Scientific Rationale\n"
@@ -269,7 +272,7 @@ def mock_query_fn(prompt, system_instruction=None):
             "Mock modality."
         )
     elif "database search agent" in sys_lower:
-        if "Turn 1" in prompt:
+        if "Turn 1" in current_prompt:
             tool_name = "search_clinicaltrials"
             for t in [
                 "search_clinicaltrials",
@@ -288,19 +291,21 @@ def mock_query_fn(prompt, system_instruction=None):
         else:
             return "Mock database search results summary. [FINALIZE]"
     elif "asset research agent" in sys_lower:
-        if "Turn 1" in prompt:
+        if "Turn 1" in current_prompt:
             return '[TOOL_CALL: web_search(query="Mock Drug safety")]'
-        elif "Turn 2" in prompt:
+        elif "Turn 2" in current_prompt:
             return '[TOOL_CALL: edit_landscape_table(safety="Mild nausea", efficacy="ORR 60%", milestones="Readout 2027", citations="ASCO 2026")]'
         else:
             return "Finished research. [FINALIZE]"
     elif "synthesis agent" in sys_lower:
-        if "Turn 1" in prompt:
+        if "Turn 1" in current_prompt:
             return '[TOOL_CALL: web_search(query="Mock Drug market")]'
         else:
             return "## Executive Summary\nReconciled landscape shows positive trends. [FINALIZE]"
     elif "curation agent" in sys_lower or "curator" in sys_lower:
         return "- Learning item 1\n- Learning item 2"
+    elif "classification" in sys_lower or "expert" in sys_lower:
+        return json.dumps({"asset": ["Mock Drug"], "background": ["Placebo"]})
     return "Mock LLM Response"
 
 
@@ -493,7 +498,7 @@ def test_classify_interventions_happy_path(mock_query):
     assert "pembrolizumab" not in result
     assert "FOLFOX" not in result
     assert "Placebo" not in result
-    mock_query.assert_called_once()
+    assert mock_query.call_count == 2
 
 
 @patch("src.services.llm_client.LLMClient.query")
@@ -541,16 +546,16 @@ def test_classify_interventions_deduplicates_input(mock_query):
         target_name="Claudin-18.2",
     )
 
-    # LLM should have been called with only 2 unique entries
-    call_args = mock_query.call_args[0][0]  # prompt positional arg
+    # LLM should have been called with only 2 unique entries in the first call (primary classification)
+    first_call_args = mock_query.call_args_list[0][0][0]  # First call positional arg (prompt)
     import json as _json2
 
-    # Find the JSON array in the prompt
+    # Find the JSON array in the prompt after 'Input names:'
     import re as _re
 
-    match = _re.search(r"\[.*?\]", call_args, _re.DOTALL)
+    match = _re.search(r"Input names:\s*(\[.*?\])", first_call_args, _re.DOTALL)
     assert match, "No JSON array found in prompt"
-    sent_names = _json2.loads(match.group())
+    sent_names = _json2.loads(match.group(1))
     assert len(sent_names) == 2
 
 

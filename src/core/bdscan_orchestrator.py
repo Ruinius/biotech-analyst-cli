@@ -11,6 +11,7 @@ from src.agents.bdscan_agents.landscape_compiler_agent import compile_landscape_
 from src.agents.bdscan_agents.synthesis_agent import SynthesisAgent
 from src.core.config import Settings
 from src.utils import formatting
+from src.utils.landscape.reconciliation import reconcile_all_sources
 
 
 def run_pipeline_step(cmd_args, step_name):
@@ -48,8 +49,14 @@ def run_bdscan_pipeline(
     en_list: list[str] | None = None,
     zh_list: list[str] | None = None,
     modality: str = "",
+    sequential: bool = False,
 ) -> Path:
-    """Execute pathway broad scan pipeline using multi-agent loops."""
+    """Execute pathway broad scan pipeline using multi-agent loops.
+
+    Args:
+        sequential: If True, forces sequential execution (no concurrency).
+                    Used for debugging. Added in §4.
+    """
     formatting.speak("Dr. Hops is initializing the agentic Broad Scan pipeline...")
 
     # Set synonyms
@@ -62,6 +69,9 @@ def run_bdscan_pipeline(
             target_dir.mkdir(parents=True, exist_ok=True)
             (target_dir / "research").mkdir(exist_ok=True)
             (target_dir / "final_output").mkdir(exist_ok=True)
+            # §1: New subdirectories for structured file storage
+            (target_dir / "database_json").mkdir(exist_ok=True)
+            (target_dir / "web_search").mkdir(exist_ok=True)
         except Exception as e:
             formatting.print_error(f"Failed to initialize directories: {e}")
             raise RuntimeError(f"Directory initialization failed: {e}")
@@ -71,13 +81,22 @@ def run_bdscan_pipeline(
             settings, target_name, en_terms, zh_terms, modality, target_dir
         )
 
-        # Step 2: Database Search Agent (4-turn sequential loop for 8 databases)
-        db_agent = DatabaseSearchAgent(settings, folder_safe_name, target_dir)
+        # Step 2: Database Search Agent (4-turn loop; concurrent in §4)
+        db_agent = DatabaseSearchAgent(
+            settings, folder_safe_name, target_dir, sequential=sequential
+        )
         db_agent.execute_search_pipeline(target_name, en_terms, zh_terms, modality)
 
         # Curation Step: Curate database search logs
         curator = CuratorAgent(settings)
         curator.curate_database_search(target_dir)
+
+        # §1: Reconcile all database sources into reconciled.json
+        formatting.speak("Running database reconciliation mapper...")
+        try:
+            reconcile_all_sources(target_dir, folder_safe_name)
+        except Exception as e:
+            formatting.print_warning(f"Reconciliation failed (non-fatal): {e}")
 
         # Step 3: Landscape Table Compiler
         compile_landscape_table(folder_safe_name, target_dir, target_name, en_terms)
@@ -90,7 +109,7 @@ def run_bdscan_pipeline(
         )
         compile_landscape_table(folder_safe_name, target_dir, target_name, en_terms)
 
-    # Step 4: Asset Research Agent (4-turn web search loop per asset)
+    # Step 4: Asset Research Agent (4-turn web search loop per asset; concurrent in §4)
     asset_agent = AssetResearchAgent(settings, target_dir)
     asset_agent.research_all_assets()
 
