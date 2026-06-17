@@ -312,7 +312,7 @@ def test_cli_config_show(temp_config_path):
         'BASE_FOLDER="~/Desktop/AI_Native_2026"\n'
         'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
         'LLM_PROVIDER="gemini"\n'
-        'LLM_MODEL="gemini-1.5-flash"\n',
+        'LLM_MODEL="gemini-3-flash-preview"\n',
         encoding="utf-8",
     )
 
@@ -323,7 +323,7 @@ def test_cli_config_show(temp_config_path):
     assert "tiger@example.com" in result.stdout
     assert "~/Desktop/AI_Native_2026" in result.stdout
     assert "gemini" in result.stdout
-    assert "gemini-1.5-flash" in result.stdout
+    assert "gemini-3-flash-preview" in result.stdout
 
 
 def test_cli_config_llm_non_interactive(temp_config_path):
@@ -339,20 +339,20 @@ def test_cli_config_llm_non_interactive(temp_config_path):
         'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
         'DEEPSEEK_API_KEY="ds_key"\n'  # pragma: allowlist secret
         'LLM_PROVIDER="gemini"\n'
-        'LLM_MODEL="gemini-1.5-flash"\n',
+        'LLM_MODEL="gemini-3-flash-preview"\n',
         encoding="utf-8",
     )
 
     runner = CliRunner()
-    result = runner.invoke(app, ["config", "llm", "deepseek", "deepseek-chat"])
+    result = runner.invoke(app, ["config", "llm", "deepseek", "deepseek-v4-flash"])
     assert result.exit_code == 0
     assert "LLM settings saved successfully" in result.stdout
     assert "deepseek" in result.stdout
-    assert "deepseek-chat" in result.stdout
+    assert "deepseek-v4-flash" in result.stdout
 
     settings = load_config()
     assert settings.llm_provider == "deepseek"
-    assert settings.llm_model == "deepseek-chat"
+    assert settings.llm_model == "deepseek-v4-flash"
 
 
 def test_cli_config_llm_interactive(temp_config_path):
@@ -367,7 +367,7 @@ def test_cli_config_llm_interactive(temp_config_path):
         'BASE_FOLDER="~/Desktop/AI_Native_2026"\n'
         'GEMINI_API_KEY="gem_key"\n'  # pragma: allowlist secret
         'LLM_PROVIDER="gemini"\n'
-        'LLM_MODEL="gemini-1.5-flash"\n',
+        'LLM_MODEL="gemini-3-flash-preview"\n',
         encoding="utf-8",
     )
 
@@ -382,3 +382,38 @@ def test_cli_config_llm_interactive(temp_config_path):
     assert settings.llm_provider == "openrouter"
     assert settings.openrouter_api_key == "my_or_key"  # pragma: allowlist secret
     assert settings.llm_model == "my_model"
+
+
+@patch("src.services.llm_client.load_config")
+def test_llm_client_streaming_error_handling(mock_load_config):
+    mock_load_config.return_value = Settings(
+        full_name="Test",
+        email="test@test.com",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
+        llm_provider="gemini",
+    )
+
+    import sys
+
+    with patch.dict(sys.modules):
+        sys.modules.pop("pytest", None)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Error: Invalid API key"
+        mock_response.read = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        mock_stream_ctx = MagicMock()
+        mock_stream_ctx.__enter__.return_value = mock_response
+
+        with patch("httpx.Client.stream", return_value=mock_stream_ctx):
+            client = LLMClient()
+            client._sync_mode = True
+            res = client.query("test prompt")
+
+            mock_response.read.assert_called_once()
+            assert "Failed to call Gemini API" in res
+            assert "Bad Request" in res

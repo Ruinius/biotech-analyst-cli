@@ -169,7 +169,7 @@ class LLMClient:
     def _call_gemini(self, prompt: str, system_instruction: str | None = None) -> str:
         """Invoke Gemini API directly using HTTP POST (streaming or non-streaming)."""
         api_key = self.settings.gemini_api_key
-        model = self.settings.llm_model or "gemini-1.5-flash"
+        model = self.settings.llm_model or "gemini-3-flash-preview"
 
         contents = [{"parts": [{"text": prompt}]}]
         payload = {"contents": contents}
@@ -196,6 +196,8 @@ class LLMClient:
         full_response = []
         with httpx.Client(timeout=30.0) as client:
             with client.stream("POST", url, json=payload) as response:
+                if response.status_code >= 400:
+                    response.read()
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
@@ -248,6 +250,8 @@ class LLMClient:
         full_response = []
         with httpx.Client(timeout=30.0) as client:
             with client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.status_code >= 400:
+                    response.read()
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):
@@ -280,7 +284,7 @@ class LLMClient:
             messages.append({"role": "system", "content": system_instruction})
         messages.append({"role": "user", "content": prompt})
 
-        model = self.settings.llm_model or "deepseek-chat"
+        model = self.settings.llm_model or "deepseek-v4-flash"
         payload = {"model": model, "messages": messages}
 
         in_test = "pytest" in sys.modules
@@ -301,6 +305,8 @@ class LLMClient:
         full_response = []
         with httpx.Client(timeout=30.0) as client:
             with client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.status_code >= 400:
+                    response.read()
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line.startswith("data: "):

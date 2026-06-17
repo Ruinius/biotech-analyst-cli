@@ -128,7 +128,7 @@ def main_config():
                 "Gemini Model (press Enter for default)",
                 default=default_gemini_model
                 if default_gemini_model
-                else "gemini-1.5-flash",
+                else "gemini-3-flash-preview",
             ).strip()
             active_model = gemini_model
         elif provider == "openrouter":
@@ -154,7 +154,7 @@ def main_config():
                 "DeepSeek Model (press Enter for default)",
                 default=default_deepseek_model
                 if default_deepseek_model
-                else "deepseek-chat",
+                else "deepseek-v4-flash",
             ).strip()
             active_model = deepseek_model
 
@@ -202,7 +202,7 @@ def config_llm(
     ),
     model: str = typer.Argument(
         None,
-        help="Model name (e.g. 'gemini-1.5-flash', 'deepseek-chat')",
+        help="Model name (e.g. 'gemini-3-flash-preview', 'deepseek-v4-flash')",
     ),
 ):
     """Switch the active LLM provider and/or configure preferred models."""
@@ -254,11 +254,11 @@ def config_llm(
 
     default_model = ""
     if provider == "gemini":
-        default_model = gemini_model or "gemini-1.5-flash"
+        default_model = gemini_model or "gemini-3-flash-preview"
     elif provider == "openrouter":
         default_model = openrouter_model or "google/gemma-2-9b-it:free"
     elif provider == "deepseek":
-        default_model = deepseek_model or "deepseek-chat"
+        default_model = deepseek_model or "deepseek-v4-flash"
 
     current_key = ""
     if provider == "gemini":
