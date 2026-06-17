@@ -52,7 +52,7 @@ class LLMQueueManager:
                 self.queue.task_done()
 
 
-_queue_manager = LLMQueueManager()
+_queue_manager = LLMQueueManager(num_workers=8)
 
 
 class LLMClient:

@@ -246,7 +246,7 @@ def classify_interventions(
     futures_map = {}
     batch_results = [None] * total_batches
 
-    with ThreadPoolExecutor(max_workers=min(total_batches, 4)) as executor:
+    with ThreadPoolExecutor(max_workers=min(total_batches, 8)) as executor:
         for batch_idx in range(total_batches):
             batch = unique_names[batch_idx * batch_size : (batch_idx + 1) * batch_size]
             f = executor.submit(process_single_batch, batch_idx, batch)
