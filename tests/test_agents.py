@@ -134,6 +134,108 @@ def test_db_search_agent_loop(mock_search, mock_query, settings, target_dir):
     assert "Completed clinical trials research log content." in content
 
 
+def test_db_search_agent_learnings(settings, target_dir):
+    # Setup a mock learning.md
+    learning_path = target_dir / "learning.md"
+    learning_path.write_text(
+        "# Pipeline Learnings\n\n"
+        "## database-search\n"
+        "- Learnings item A\n"
+        "- Learnings item B\n\n"
+        "## web-search\n"
+        "- Web item 1\n",
+        encoding="utf-8",
+    )
+
+    agent = DatabaseSearchAgent(settings, "testpathway", target_dir)
+    agent.learning_filepath = learning_path
+
+    # Verify _load_learnings loads correct section
+    db_learnings = agent._load_learnings("database-search")
+    assert "- Learnings item A" in db_learnings
+    assert "- Learnings item B" in db_learnings
+    assert "- Web item 1" not in db_learnings
+
+    # Mock the LLM client query to verify that the query was called with the correct learnings in the system instruction
+    with (
+        patch("src.services.llm_client.LLMClient.query") as mock_query,
+        patch(
+            "src.agents.bdscan_agents.db_search_agent.search_clinicaltrials"
+        ) as mock_search,
+    ):
+        mock_search.return_value = "Success"
+        mock_query.return_value = "Mock result. [FINALIZE]"
+
+        agent.run_loop_for_source(
+            idx=1,
+            source_name="ClinicalTrials.gov",
+            tool_name="search_clinicaltrials",
+            synonyms=["TestPathway"],
+            target_name="TestPathway",
+            modality="ADC",
+        )
+
+        assert mock_query.call_count == 1
+        args, kwargs = mock_query.call_args
+        system_instruction = kwargs.get("system_instruction")
+        if not system_instruction and len(args) > 1:
+            system_instruction = args[1]
+        assert "Learnings item A" in system_instruction
+        assert "Learnings item B" in system_instruction
+
+
+def test_asset_research_agent_learnings(settings, target_dir):
+    learning_path = target_dir / "learning.md"
+    learning_path.write_text(
+        "# Pipeline Learnings\n\n"
+        "## database-search\n"
+        "- Learnings item A\n"
+        "- Learnings item B\n\n"
+        "## web-search\n"
+        "- Web item 1\n"
+        "- Web item 2\n",
+        encoding="utf-8",
+    )
+
+    agent = AssetResearchAgent(settings, target_dir)
+    agent.learning_filepath = learning_path
+
+    # Verify _load_learnings loads correct section
+    web_learnings = agent._load_learnings("web-search")
+    assert "- Web item 1" in web_learnings
+    assert "- Web item 2" in web_learnings
+    assert "- Learnings item A" not in web_learnings
+
+    # Mock the LLM client query to verify that the query was called with the correct learnings in the system instruction
+    with (
+        patch("src.services.llm_client.LLMClient.query") as mock_query,
+        patch(
+            "src.agents.bdscan_agents.asset_research_agent.web_search"
+        ) as mock_web_search,
+    ):
+        mock_web_search.return_value = "Success"
+        mock_query.return_value = "Mock result. [FINALIZE]"
+
+        # Write dummy landscape table first
+        table_path = target_dir / "research" / "landscape_table.md"
+        headers = "| Asset Name | Sponsor | MoA / Modality | Formulation | Lead Indication | Development Phase | Key Trials / Registry / Patent IDs | Web Selectivity & Safety Profile | Web Key Efficacy Data | Web Upcoming Milestones | Web Citations / Sources |"
+        divider = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
+        row = "| **Zolbetuximab** | Astellas | mAb | IV | Gastric | Approved | NCT03504397 | Web research pending. | Web research pending. | Web research pending. | N/A |"
+        table_path.write_text(f"{headers}\n{divider}\n{row}\n", encoding="utf-8")
+
+        agent.research_all_assets()
+
+        # The query should contain the learnings in the system instruction
+        assert mock_query.call_count > 0
+        # Check first query call
+        args, kwargs = mock_query.call_args_list[0]
+        system_instruction = kwargs.get("system_instruction")
+        if not system_instruction and len(args) > 1:
+            system_instruction = args[1]
+        assert "Web item 1" in system_instruction
+        assert "Web item 2" in system_instruction
+
+
 def test_name_cleaner_and_extractor():
     cell_val = "**Zolbetuximab**<br>*(Vyloy / IMAB362 / IMAB-362)*"
     assert clean_cell_to_name(cell_val) == "Zolbetuximab"

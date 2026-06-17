@@ -136,6 +136,7 @@ class AssetResearchAgent:
         self._claimed_assets = {}  # normalized_alias -> canonical_name
         self._merge_queue = []  # list of (canonical_name, other_canonical_name)
         self._pre_detected_duplicates = []  # list of (raw_name, duplicate_parent)
+        self.learning_filepath = Path(__file__).parent.parent / "learning.md"
         config_path = self.target_dir / "database_json" / "asset_config.json"
         if config_path.exists():
             try:
@@ -314,6 +315,31 @@ class AssetResearchAgent:
             else:
                 self._claimed_assets[key] = canonical_name
 
+    def _load_learnings(self, section: str) -> str:
+        """Load specific section learnings from learning.md if it exists."""
+        if not self.learning_filepath.exists():
+            return ""
+        try:
+            content = self.learning_filepath.read_text(encoding="utf-8")
+            lines = content.splitlines()
+            section_header = f"## {section}"
+            section_idx = -1
+            for idx, line in enumerate(lines):
+                if line.strip() == section_header:
+                    section_idx = idx
+                    break
+            if section_idx == -1:
+                return ""
+            next_section_idx = len(lines)
+            for idx in range(section_idx + 1, len(lines)):
+                if lines[idx].strip().startswith("## "):
+                    next_section_idx = idx
+                    break
+            sec_lines = lines[section_idx + 1 : next_section_idx]
+            return "\n".join(sec_lines).strip()
+        except Exception:
+            return ""
+
     def run_loop_for_asset(self, table_path: Path, asset_name: str, cols: list[str]):
         history = []
         turn_budget = 4
@@ -323,6 +349,14 @@ class AssetResearchAgent:
         phase = cols[6] if len(cols) > 6 else "N/A"
         trials = cols[7] if len(cols) > 7 else "N/A"
 
+        # Load historical web-search learnings
+        learnings = self._load_learnings("web-search")
+        learnings_block = (
+            f"\nApply these historical learnings and guidelines during your web search execution:\n{learnings}\n"
+            if learnings
+            else ""
+        )
+
         system_instruction = (
             f"You are Dr. Hops' Asset Research Agent dilution scout for the candidate '{asset_name}'.\n"
             f"Developer: {sponsor}, Modality: {modality}, Phase: {phase}, Trial IDs: {trials}.\n"
@@ -331,6 +365,7 @@ class AssetResearchAgent:
             "Supported tools:\n"
             '- [TOOL_CALL: web_search(query="query_string")]\n'
             '- [TOOL_CALL: edit_landscape_table(safety="...", efficacy="...", milestones="...", citations="...")]\n'
+            f"{learnings_block}"
             "When done or on Turn 4, write your final response ending with the [FINALIZE] tag.\n"
             "Always cite PMIDs, NCT links, press releases, or conference abstracts."
         )

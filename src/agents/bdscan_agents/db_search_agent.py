@@ -372,6 +372,7 @@ class DatabaseSearchAgent:
         self.client = LLMClient()
         self.logs = []
         self._db_json_dir = str(target_dir / "database_json") if target_dir else None
+        self.learning_filepath = Path(__file__).parent.parent / "learning.md"
 
     def execute_search_pipeline(
         self,
@@ -443,6 +444,31 @@ class DatabaseSearchAgent:
         # Run deterministic merging after completing all sweeps
         self.deterministic_merge()
 
+    def _load_learnings(self, section: str) -> str:
+        """Load specific section learnings from learning.md if it exists."""
+        if not self.learning_filepath.exists():
+            return ""
+        try:
+            content = self.learning_filepath.read_text(encoding="utf-8")
+            lines = content.splitlines()
+            section_header = f"## {section}"
+            section_idx = -1
+            for idx, line in enumerate(lines):
+                if line.strip() == section_header:
+                    section_idx = idx
+                    break
+            if section_idx == -1:
+                return ""
+            next_section_idx = len(lines)
+            for idx in range(section_idx + 1, len(lines)):
+                if lines[idx].strip().startswith("## "):
+                    next_section_idx = idx
+                    break
+            sec_lines = lines[section_idx + 1 : next_section_idx]
+            return "\n".join(sec_lines).strip()
+        except Exception:
+            return ""
+
     def run_loop_for_source(
         self,
         idx: int,
@@ -457,6 +483,15 @@ class DatabaseSearchAgent:
         source_log_lines = []
 
         default_limit = 200 if tool_name == "search_clinicaltrials" else 50
+
+        # Load historical database-search learnings
+        learnings = self._load_learnings("database-search")
+        learnings_block = (
+            f"\nApply these historical learnings and guidelines during your search execution:\n{learnings}\n"
+            if learnings
+            else ""
+        )
+
         system_instruction = (
             f"You are Dr. Hops' Database Search Agent specialized in '{source_name}'.\n"
             "Your objective is to find trials, products, and preclinical/clinical info "
@@ -465,6 +500,7 @@ class DatabaseSearchAgent:
             "In each turn, you can call the tool once using this exact syntax:\n"
             f'[TOOL_CALL: {tool_name}(term="synonym_here")]\n'
             f"Or with limit if supported (e.g. limit={default_limit}).\n"
+            f"{learnings_block}"
             "Once you have sufficient results, or on Turn 4, write a comprehensive Markdown summary "
             "reviewing the findings and end your response with the [FINALIZE] tag.\n"
             "Do NOT hallucinate study IDs or names."
