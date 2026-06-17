@@ -77,6 +77,26 @@ class CuratorAgent:
         self.update_section("web-search", new_bullets)
         formatting.print_success("Web search learnings updated successfully.")
 
+    def _is_error_bullet(self, bullet: str) -> bool:
+        """Detect if a bullet point represents an execution/API error instead of a valid learning."""
+        err_patterns = [
+            "api error",
+            "http 400",
+            "invalid_argument",
+            "api key not valid",
+            "failed to call",
+            "rate limit",
+            "server error",
+            "fatal llm api error",
+            "connection error",
+            "error executing",
+            "unsupported llm provider",
+            "configuration settings not found",
+            "please run 'ba config' first",
+        ]
+        bullet_lower = bullet.lower()
+        return any(pat in bullet_lower for pat in err_patterns)
+
     def get_existing_learnings(self, section: str) -> str:
         """Read and return existing bullet points for a section in learning.md."""
         if not self.learning_filepath.exists():
@@ -102,7 +122,19 @@ class CuratorAgent:
                     break
 
             sec_lines = lines[section_idx + 1 : next_section_idx]
-            return "\n".join(sec_lines).strip()
+            filtered_sec_lines = []
+            for line in sec_lines:
+                line_stripped = line.strip()
+                if not line_stripped:
+                    continue
+                content_to_check = line_stripped
+                if line_stripped.startswith("- ") or line_stripped.startswith("* "):
+                    content_to_check = line_stripped[2:]
+                elif line_stripped.startswith("-") or line_stripped.startswith("*"):
+                    content_to_check = line_stripped[1:]
+                if not self._is_error_bullet(content_to_check):
+                    filtered_sec_lines.append(line)
+            return "\n".join(filtered_sec_lines).strip()
         except Exception as e:
             formatting.print_error(f"Failed to read existing learnings: {e}")
             return ""
@@ -116,7 +148,8 @@ class CuratorAgent:
             "actionable lessons, database search tips, nomenclature rules, translation mappings, "
             "or web search heuristics from the provided logs, and merge them with existing learnings.\n"
             "Return only the final updated list of learnings as bullet points, each on a single line starting with '- '.\n"
-            "Limit the response to a maximum of 15 bullet points.\n"
+            "Limit the response to a maximum of 10 bullet points.\n"
+            "Do NOT include system/API execution errors (such as HTTP 400, invalid API keys, connection failures, rate limits, or raw JSON error responses) as learnings.\n"
             "Do NOT include any introduction, formatting wrappers, extra commentary, or conversational output."
         )
 
@@ -125,7 +158,8 @@ class CuratorAgent:
             f"Existing Learnings:\n{existing if existing else '(None)'}\n\n"
             f"New Execution/Search Logs:\n{logs}\n\n"
             "Analyze the logs and identify any patterns, failures, successes, or search tricks (e.g. spelling variants, translation rules, API limits).\n"
-            "Consolidate these into a clean bulleted list (max 15 bullets, each on a single line).\n"
+            "Consolidate these into a clean bulleted list (max 10 bullets, each on a single line).\n"
+            "Do NOT include system/API execution errors (such as HTTP 400, invalid API keys, connection failures, rate limits, or raw JSON error responses) as learnings.\n"
             "Ensure they merge with and refine the existing learnings without duplicate entries."
         )
 
@@ -137,16 +171,19 @@ class CuratorAgent:
             if not line_stripped:
                 continue
             if line_stripped.startswith("- ") or line_stripped.startswith("* "):
-                bullets.append(line_stripped[2:].strip())
+                bp = line_stripped[2:].strip()
             elif line_stripped.startswith("-") or line_stripped.startswith("*"):
-                bullets.append(line_stripped[1:].strip())
+                bp = line_stripped[1:].strip()
             else:
-                bullets.append(line_stripped)
+                bp = line_stripped
+
+            if not self._is_error_bullet(bp):
+                bullets.append(bp)
 
         return bullets
 
     def update_section(self, section: str, bullet_points: list[str]):
-        """Write the updated bullet points to the correct section in learning.md, limiting to 20 lines max."""
+        """Write the updated bullet points to the correct section in learning.md, limiting to 10 lines max."""
         if not self.learning_filepath.exists():
             # Create a basic file template if missing
             self.learning_filepath.write_text(
@@ -182,12 +219,15 @@ class CuratorAgent:
 
             # Filter and format bullet points
             cleaned_bullets = [bp.strip() for bp in bullet_points if bp.strip()]
+            cleaned_bullets = [
+                bp for bp in cleaned_bullets if not self._is_error_bullet(bp)
+            ]
             formatted_points = [
                 f"- {bp}" if not bp.startswith("- ") else bp for bp in cleaned_bullets
             ]
 
-            # Enforce max 20 lines constraint programmatically
-            formatted_points = formatted_points[:20]
+            # Enforce max 10 lines constraint programmatically
+            formatted_points = formatted_points[:10]
 
             # Reconstruct the file content
             new_content = (

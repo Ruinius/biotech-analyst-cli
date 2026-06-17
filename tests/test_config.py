@@ -471,3 +471,104 @@ def test_cli_deepdive_under_construction():
     assert result.exit_code == 0
     stdout = result.stdout.lower()
     assert "under" in stdout and "construction" in stdout
+
+
+@patch("src.services.llm_client.load_config")
+@patch("httpx.Client.post")
+def test_llm_client_parameters_gemini(mock_post, mock_load_config):
+    mock_load_config.return_value = Settings(
+        full_name="Test",
+        email="test@test.com",
+        gemini_api_key="gem_key",  # pragma: allowlist secret
+        llm_provider="gemini",
+        llm_model="custom-gemini-2.0",
+    )
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "candidates": [{"content": {"parts": [{"text": "Hello Gemini"}]}}]
+    }
+    mock_post.return_value = mock_response
+
+    client = LLMClient()
+    response = client.query(
+        "test prompt",
+        temperature=0.3,
+        frequency_penalty=0.6,
+        presence_penalty=0.7,
+    )
+    assert response == "Hello Gemini"
+
+    called_json = mock_post.call_args[1]["json"]
+    assert "generationConfig" in called_json
+    gen_config = called_json["generationConfig"]
+    assert gen_config["temperature"] == 0.3
+    assert gen_config["frequencyPenalty"] == 0.6
+    assert gen_config["presencePenalty"] == 0.7
+
+
+@patch("src.services.llm_client.load_config")
+@patch("httpx.Client.post")
+def test_llm_client_parameters_openrouter(mock_post, mock_load_config):
+    mock_load_config.return_value = Settings(
+        full_name="Test",
+        email="test@test.com",
+        openrouter_api_key="or_key",  # pragma: allowlist secret
+        llm_provider="openrouter",
+        llm_model="custom-or-model",
+    )
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": "Hello OpenRouter"}}]
+    }
+    mock_post.return_value = mock_response
+
+    client = LLMClient()
+    response = client.query(
+        "test prompt",
+        temperature=0.4,
+        frequency_penalty=0.5,
+        presence_penalty=0.8,
+    )
+    assert response == "Hello OpenRouter"
+
+    called_json = mock_post.call_args[1]["json"]
+    assert called_json["temperature"] == 0.4
+    assert called_json["frequency_penalty"] == 0.5
+    assert called_json["presence_penalty"] == 0.8
+
+
+@patch("src.services.llm_client.load_config")
+@patch("httpx.Client.post")
+def test_llm_client_parameters_deepseek(mock_post, mock_load_config):
+    mock_load_config.return_value = Settings(
+        full_name="Test",
+        email="test@test.com",
+        deepseek_api_key="ds_key",  # pragma: allowlist secret
+        llm_provider="deepseek",
+        llm_model="custom-ds-model",
+    )
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": "Hello DeepSeek"}}]
+    }
+    mock_post.return_value = mock_response
+
+    client = LLMClient()
+    response = client.query(
+        "test prompt",
+        temperature=0.5,
+        frequency_penalty=0.2,
+        presence_penalty=0.1,
+    )
+    assert response == "Hello DeepSeek"
+
+    called_json = mock_post.call_args[1]["json"]
+    assert called_json["temperature"] == 0.5
+    assert called_json["frequency_penalty"] == 0.2
+    assert called_json["presence_penalty"] == 0.1

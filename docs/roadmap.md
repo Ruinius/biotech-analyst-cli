@@ -122,11 +122,11 @@ This document lays out the milestones and tasks to implement the new agentic arc
 ## Next Steps / Bugs
 
 - [x] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", everything just says web search pending despite 110 web searches being completed. I suspect the web search agent does not have a reminder that it's on the final turn and needs to finalize. In fact, every agent needs this final turn reminder.
-- [x] Looking at "C:\Users\tiger\Desktop\AI_Native_2026\20260616_Claudin_18_2_Scan\final_output\meta_analysis_Claudin_18_2_table_20260616.md", there are obvious duplicates, such as the two IMC002 and LM-302
-- [ ] **Fix LLM repetition/attention loops during web search query generation in `AssetResearchAgent`**:
-  - Add a query string length cap and sanitization in `AssetResearchAgent` to prevent repeating or runaway generated queries from breaking DuckDuckGo searches.
-  - Update `LLMClient` (`src/services/llm_client.py`) to support custom `generationConfig` parameters (like `temperature`, `frequency_penalty`, and `presence_penalty`) to penalize repetitive streaming tokens, especially on lightweight/Flash models.
-  - Streamline and consolidate the `## web-search` instructions in `learning.md` to prevent prompt inflation and instruction conflict.
+- [x] **synonym/duplicate resolution**: Resolve duplicate rows (e.g. `IBI343` combos, `IMC002` Chinese suffixes/descriptions) by updating `intervention_classifier_agent.py` prompts to classify combination regimens and parentheticals under core base canonical names, and penalizing messy/long names in `_name_priority` (`table_formatters.py`) to keep canonical keys clean.
+- [x] **Fix LLM repetition/attention loops during web search query generation in `AssetResearchAgent`**:
+  - [x] Add a query string length cap and sanitization in `AssetResearchAgent` to prevent repeating or runaway generated queries from breaking DuckDuckGo searches.
+  - [x] Update `LLMClient` (`src/services/llm_client.py`) to support custom `generationConfig` parameters (like `temperature`, `frequency_penalty`, and `presence_penalty`) to penalize repetitive streaming tokens, especially on lightweight/Flash models.
+  - [x] Streamline and consolidate the `## web-search` instructions in `learning.md` to prevent prompt inflation and instruction conflict.
 
 ## Future Ideas
 

@@ -21,19 +21,8 @@ This file contains accumulated learnings, heuristics, and constraints gathered b
 - For combination regimens (e.g. `IBI343,sintilimab...`) and Chinese CDE records containing trial descriptions/suffixes in parentheses (e.g., `IMC002注射液 (...)`), use the LLM agent to cleanly consolidate them under their base canonical molecule names, mapping the messy combination/trial strings to aliases. Penalize combo-regimen indicators and trial title patterns in the canonical sorting keys to prevent messy names from becoming the canonical table rows.
 
 ## web-search
-- API Error (HTTP 400): {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}
-- Search for clinical trial identifiers (NCT numbers) directly—they uniquely identify studies and yield the most precise results for drug candidates.
-- Combine the drug code with the developing company’s name (e.g., “AZD5863 AstraZeneca”) to filter out irrelevant hits from other fields.
-- Add the mechanism of action or target (e.g., “CLDN18.2”, “ADC”, “Bispecific T-cell engager”) to focus results on the therapeutic context.
-- When a drug code is ambiguous or returns spam, try its alternative name (brand name, generic name) or a synonym (e.g., “tecotabart vedotin” for LM-302).
-- Search for conference abstracts (ASCO, ESMO, AACR) by combining drug name with “ASCO 2024” or “ESMO 2025” to locate public safety and efficacy data.
-- For Chinese trial registry entries (CTRxxx), use an English description of the trial or the corresponding NCT number; direct CTR searches often return irrelevant content.
-- Include keywords like “safety”, “efficacy”, “phase 1”, or “clinical trial” in the query to improve relevance to due diligence.
-- Enclose exact compound names in double quotes when they share common words (e.g., “2-Targeted” or “5Fluorouracil”).
-- Append “discontinued” or “terminated” to the search for candidates that were halted to quickly identify termination details.
-- Company press releases and investor materials are reliable sources for milestones (regulatory designations, trial initiations) and should be searched directly on the company site.
-- For selectivity or preclinical data, add terms like “selectivity”, “binding affinity”, or “expression” to the query.
-- Limit search queries to a few key terms; overly complex syntax can trigger API errors (e.g., “query is mandatory” on DuckDuckGo).
-- When a search returns no results, reduce the query length or remove special characters before retrying.
-- For drugs developed by multiple institutions, pick the lead sponsor or one major hospital as the developer in the search.
-- Include the drug’s target class (e.g., “ADC targeting CLDN18.2”) to distinguish it from unrelated compounds with similar codes.
+- **Query Formatting & Length Constraints**: Keep queries concise, focus on a few key terms, and avoid complex syntax to prevent search engine errors. Strip special characters or shorten queries if no results are found.
+- **Entity Combination**: Search using the drug code/name combined with the lead sponsor/developer's name, mechanism of action, or target class to filter out noise.
+- **Identifier-based Searching**: Prioritize searching with clinical trial identifiers (NCT numbers) or synonyms (brand name, generic name, asset code) for precise candidate tracking.
+- **Source & Indication Keywords**: Incorporate trial keywords (e.g., "safety", "efficacy", "Phase 1"), indication keywords, conference names (e.g., "ASCO", "ESMO"), or status terms ("discontinued", "terminated") to retrieve targeted clinical/preclinical readouts.
+- **Chinese Registry Mapping**: For CTR entries or Chinese registry assets, search via English equivalents, descriptions, or linked NCT numbers to obtain higher-quality indexing.

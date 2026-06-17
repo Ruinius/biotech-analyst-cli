@@ -21,6 +21,7 @@ from src.agents.bdscan_agents.asset_research_agent import (
     AssetResearchAgent,
     clean_cell_to_name,
     extract_names_from_cell,
+    sanitize_search_query,
 )
 from src.agents.bdscan_agents.context_agent import generate_context
 from src.agents.bdscan_agents.curator_agent import CuratorAgent
@@ -249,6 +250,32 @@ def test_name_cleaner_and_extractor():
     assert "IMAB-362" in extracted
 
 
+def test_sanitize_search_query():
+    # Test newlines, tabs, carriage returns are replaced by space
+    assert sanitize_search_query("my\nquery\twith\rreturns") == "my query with returns"
+
+    # Test stripping single and double quotes and whitespace
+    assert sanitize_search_query("  '\"claudin 18.2\"'  ") == "claudin 18.2"
+
+    # Test deduplication of consecutive duplicate words
+    assert (
+        sanitize_search_query("claudin claudin 18.2 trials trials")
+        == "claudin 18.2 trials"
+    )
+    assert sanitize_search_query("CLDN18 CLDN18") == "CLDN18"
+
+    # Test capping at max length on word boundary
+    long_query = "this is a very long query that should be truncated to a reasonable size on a word boundary"
+    assert (
+        sanitize_search_query(long_query, max_length=32)
+        == "this is a very long query that"
+    )
+
+    # Test capping when no word boundary can be found
+    long_single_word = "a" * 50
+    assert sanitize_search_query(long_single_word, max_length=20) == "a" * 20
+
+
 @patch("src.services.llm_client.LLMClient.query")
 @patch("src.agents.bdscan_agents.asset_research_agent.web_search")
 def test_asset_research_agent_loop(mock_web_search, mock_query, settings, target_dir):
@@ -322,8 +349,11 @@ def test_curator_agent(mock_query, settings, target_dir):
     test_learning_path = target_dir / "learning.md"
     agent.learning_filepath = test_learning_path
 
-    # Define a mock response that returns more than 20 bullets to test programmatic limit
-    mock_query.return_value = "\n".join([f"- Learning item {i}" for i in range(1, 26)])
+    # Define a mock response that returns more than 10 bullets, including an API error to test filtering and limits
+    mock_query.return_value = "\n".join(
+        [f"- Learning item {i}" for i in range(1, 26)]
+        + ["- API Error (HTTP 400): api key invalid"]
+    )
 
     # Curate database search
     agent.curate_database_search(target_dir)
@@ -332,6 +362,7 @@ def test_curator_agent(mock_query, settings, target_dir):
     assert test_learning_path.exists()
     content = test_learning_path.read_text(encoding="utf-8")
     assert "## database-search" in content
+    assert "API Error" not in content
 
     # Extract the database-search section lines
     lines = content.splitlines()
@@ -341,20 +372,23 @@ def test_curator_agent(mock_query, settings, target_dir):
         l for l in lines[db_start + 1 : db_end] if l.strip().startswith("-")
     ]
 
-    # Assert programmatic limit of 20 was enforced
-    assert len(db_section_lines) == 20
+    # Assert programmatic limit of 10 was enforced
+    assert len(db_section_lines) == 10
     assert "- Learning item 1" in db_section_lines
-    assert "- Learning item 20" in db_section_lines
-    assert "- Learning item 21" not in db_section_lines
+    assert "- Learning item 10" in db_section_lines
+    assert "- Learning item 11" not in db_section_lines
 
     # Curate web search
-    mock_query.return_value = "- Web lesson A\n- Web lesson B"
+    mock_query.return_value = (
+        "- Web lesson A\n- Web lesson B\n- API Error (HTTP 400): invalid key"
+    )
     agent.curate_web_search(target_dir)
 
     content_updated = test_learning_path.read_text(encoding="utf-8")
     assert "## web-search" in content_updated
     assert "- Web lesson A" in content_updated
     assert "- Web lesson B" in content_updated
+    assert "API Error" not in content_updated
 
 
 def mock_query_fn(prompt, system_instruction=None):

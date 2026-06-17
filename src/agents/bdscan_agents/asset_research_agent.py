@@ -105,6 +105,33 @@ def update_table_row(
     table_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def sanitize_search_query(query: str, max_length: int = 200) -> str:
+    """Sanitize and cap search query string to prevent errors or runaway loops."""
+    # Replace newlines, tabs, carriage returns with spaces
+    query = re.sub(r"[\r\n\t]+", " ", query)
+
+    # Replace multiple spaces with a single space
+    query = re.sub(r"\s+", " ", query)
+
+    # Strip quotes (both single and double) that might be wrapping or cluttering the query
+    query = query.strip().strip("\"'").strip()
+
+    # Clean up consecutive duplicate words (case-insensitive)
+    query = re.sub(r"\b(\w+)(?:\s+\1\b)+", r"\1", query, flags=re.IGNORECASE)
+
+    # Cap the query length
+    if len(query) > max_length:
+        truncated = query[:max_length]
+        # Try to truncate at a word boundary
+        split_query = truncated.rsplit(" ", 1)
+        if len(split_query) > 1 and split_query[0]:
+            query = split_query[0]
+        else:
+            query = truncated
+
+    return query.strip()
+
+
 def web_search(query: str) -> str:
     """Query DuckDuckGo for clinical news and pipeline updates."""
     try:
@@ -392,7 +419,13 @@ class AssetResearchAgent:
 
             # Invoke LLM
             full_prompt = prompt + "\n\nHistory:\n" + "\n".join(history)
-            response = self.client.query(full_prompt, system_instruction)
+            response = self.client.query(
+                full_prompt,
+                system_instruction,
+                temperature=0.2,
+                frequency_penalty=0.5,
+                presence_penalty=0.5,
+            )
 
             history.append(f"User: {prompt}")
             history.append(f"Agent: {response}")
@@ -418,7 +451,8 @@ class AssetResearchAgent:
                             if query_match
                             else f"{asset_name} {sponsor} clinical data"
                         )
-                        result = web_search(query)
+                        sanitized_query = sanitize_search_query(query)
+                        result = web_search(sanitized_query)
                         history.append(f"System Tool Result: {result}")
                 elif called_tool == "edit_landscape_table":
                     # Parse safety, efficacy, milestones, citations
