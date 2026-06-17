@@ -67,7 +67,7 @@ def classify_interventions(
     total_batches = (len(unique_names) + batch_size - 1) // batch_size
     print(
         f"\nClassifying {len(unique_names)} unique intervention name(s) via LLM "
-        f"({total_batches} batch(es) of ≤{batch_size})..."
+        f"({total_batches} batch(es) of <={batch_size})..."
     )
 
     def process_single_batch(batch_idx: int, batch: list) -> tuple[list, list]:
@@ -209,10 +209,10 @@ def classify_interventions(
         )
         for entry in valid_assets_in_batch:
             print(
-                f"    ✓ ASSET      : {entry['canonical_name']} (Aliases: {entry['aliases']})"
+                f"    [+] ASSET      : {entry['canonical_name']} (Aliases: {entry['aliases']})"
             )
         for name in classified_background:
-            print(f"    ✗ background : {name}")
+            print(f"    [-] background : {name}")
 
         all_assets.extend(valid_assets_in_batch)
 

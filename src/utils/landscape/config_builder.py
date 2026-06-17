@@ -199,7 +199,23 @@ def merge_config_duplicates(config: dict, existing_meta: dict) -> tuple[dict, di
         new_primary = sorted_names[0]
         new_aliases = sorted_names[1:]
 
-        new_config[new_primary] = {"aliases": new_aliases}
+        # Get modality from original config
+        modality = "N/A"
+        for name in g:
+            for old_p, old_det in config.items():
+                if old_p.lower() == name.lower() or name.lower() in [
+                    a.lower() for a in old_det.get("aliases", [])
+                ]:
+                    if old_det.get("modality") and old_det.get("modality") != "N/A":
+                        modality = old_det.get("modality")
+                        break
+            if modality != "N/A":
+                break
+
+        new_config[new_primary] = {
+            "aliases": new_aliases,
+            "modality": modality,
+        }
 
         combined_meta: dict = {}
         for name in g:
@@ -275,7 +291,10 @@ def discover_config(
                 # Build config mapping canonical name -> aliases
                 config = {}
                 for primary, details in reconciled.items():
-                    config[primary] = {"aliases": details.get("aliases", [])}
+                    config[primary] = {
+                        "aliases": details.get("aliases", []),
+                        "modality": details.get("modality", "N/A"),
+                    }
 
                 # Persist config just as before
                 config_path = os.path.join(database_json_dir, "asset_config.json")
@@ -466,7 +485,10 @@ def discover_config(
         filtered_aliases = [a for a in aliases if a.lower() not in EXCLUDE_LOWER]
 
         sorted_aliases = sorted(filtered_aliases, key=_name_priority)
-        config[canon] = {"aliases": sorted_aliases}
+        config[canon] = {
+            "aliases": sorted_aliases,
+            "modality": entry.get("modality", "N/A"),
+        }
 
     # Persist asset_config.json to the database_json directory
     if database_json_dir:

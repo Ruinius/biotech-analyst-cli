@@ -382,39 +382,21 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
     target_name = folder_safe_name.replace("_", " ").replace("-", " ")
     synonym_sets: list[set[str]] = []
 
-    # Build synonym groups by record_id
-    id_to_names = {}
+    # Build synonym groups by grouping names and their otherNames from the same record
     for rec in all_asset_records:
-        rec_id = rec.get("record_id")
         name = rec.get("name")
         if not name:
             continue
         cleaned = clean_drug_name(name, target_name)
         if cleaned and cleaned.lower() not in EXCLUDE_LOWER:
-            if rec_id:
-                if rec_id not in id_to_names:
-                    id_to_names[rec_id] = set()
-                id_to_names[rec_id].add(cleaned)
-            else:
-                synonym_sets.append({cleaned})
-
-    for names_set in id_to_names.values():
-        synonym_sets.append(names_set)
-
-    # Include any direct otherNames from clinicaltrials
-    for rec in all_asset_records:
-        if rec.get("source") == "clinicaltrials":
+            current_set = {cleaned}
+            # Add other_names if available for this record
             other = rec.get("other_names") or []
-            cleaned_others = []
             for o in other:
                 cleaned_o = clean_drug_name(o, target_name)
                 if cleaned_o and cleaned_o.lower() not in EXCLUDE_LOWER:
-                    cleaned_others.append(cleaned_o)
-            primary_cleaned = clean_drug_name(rec["name"], target_name)
-            if primary_cleaned and primary_cleaned.lower() not in EXCLUDE_LOWER:
-                cleaned_others.append(primary_cleaned)
-            if cleaned_others:
-                synonym_sets.append(set(cleaned_others))
+                    current_set.add(cleaned_o)
+            synonym_sets.append(current_set)
 
     # Load global master_config.json if it exists
     master_config = {}

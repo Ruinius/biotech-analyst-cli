@@ -272,6 +272,22 @@ def normalize_drug_name(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 EXCLUDE_LOWER = {
+    "claudin 18.2",
+    "claudin-18.2",
+    "claudin 18",
+    "claudin-18",
+    "claudin18.2",
+    "claudin18",
+    "cldn18.2",
+    "cldn18",
+    "cldn-18.2",
+    "cldn-18",
+    "claudin",
+    "cldn",
+    "muc1",
+    "muc-1",
+    "mucin 1",
+    "mucin-1",
     "placebo",
     "chemotherapy",
     "chemo",
