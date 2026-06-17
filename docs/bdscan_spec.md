@@ -173,20 +173,20 @@ Mappers extract fields from raw source files and map them structurally. They do 
 | PubChem                | `map_pubchem(raw_data) -> PubChemRecord`                | CID, bioassays, formula                                            |
 | openFDA                | `map_openfda(raw_data) -> OpenFDARecord`                | Adverse events count, label snippets                               |
 
-### Matching Algorithm (LLM-Primary)
-1. **Preprocessing (Exact-Dedup):** Case-insensitive exact matches are collapsed to reduce LLM tokens.
-2. **LLM-Based Grouping:** Unique names are batched through `classify_interventions()`. The LLM classifies names as `"asset"` or `"background"`, groups synonyms, selects canonical names, and extracts target/modality metadata.
-3. **Record Assignment:** Assigns source records to the canonical asset entry. Drops background terms and logs them to `reconciliation_log.json`.
-4. **Cross-Language Resolution:** Multi-lingual alias grouping (English ↔ Chinese) is handled natively by the LLM. Shared trial IDs (e.g. CTR linked to NCT) are provided as structural context.
+### Matching Algorithm (Programmatic-First)
+1. **Local Pre-Filtering (Noise Cleansing):** Programmatic regex filters and exclusion lists immediately drop placebos, common chemotherapies, standard of cares, and general clinical parameter words before calling any LLM.
+2. **Disjoint-Set Union (DSU / Union-Find) Clustering:** A local Python-based Union-Find algorithm programmatically clusters synonymous names and codes that overlap (e.g. from sharing trial IDs, listings, or casing variations) into disjoint sets.
+3. **LLM-Based Classification:** Pick a representative canonical name for each programmatic group and send it to `classify_interventions()`. The LLM classifies names as specific pipeline assets or background, and extracts modality and target metadata in a single fast pass.
+4. **Record Assignment:** Maps source records to the canonical assets. Programmatically clean and merge aliases from the programmatic DSU groups back into the config mapping.
 
 ---
 
-## 5. LLM-Based Alias Resolution & Synonyms Extraction
+## 5. Alias Resolution & Synonyms Extraction
 
-This pipeline replaces heuristic blocklists and regex parenthetical parsing with LLM-based classifications.
+This pipeline combines static blocklists and programmatic Union-Find clustering with targeted LLM classification.
 
 ### Single Source of Truth
-All classification logic resides in **`src/tools/classify_interventions.py`**, which is imported by the Reconciliation Mapper, the Landscape Compiler Agent, and the configuration utilities.
+All classification logic resides in **`src/agents/bdscan_agents/intervention_classifier_agent.py`**, which is imported by the Reconciliation Mapper, the Landscape Compiler Agent, and the configuration utilities.
 
 ### Extended Schema
 `classify_interventions()` returns a structured schema:
@@ -196,15 +196,16 @@ All classification logic resides in **`src/tools/classify_interventions.py`**, w
   "aliases": ["Vyloy", "IMAB362"],
   "modality": "Monoclonal Antibody",
   "targets": ["CLDN18.2"],
-  "filtered_terms": ["Chemotherapy", "HER2", "immunotherapy"]
+  "filtered_terms": []
 }
 ```
 
 ### Zero-Hallucination Synonym Validator
 1. **Provenance Trace Verification:** Confirms that every alias and canonical name in the LLM output is contained verbatim (case-insensitive) in the original raw fields of the source records. Hallucinated terms are discarded.
-2. **LLM-Based Modality/Target Filter:** A secondary validation LLM call reviews the `"asset"` list and filters out modal terms (e.g. `"HER2"`, `"immunotherapy"`, `"chemotherapy"`) that slipped past the primary classifier.
-3. **Report Audit:** `validate_report.py` audits the generated `asset_config.json` against the raw JSONs under `database_json/` before proceeding to report synthesis.
-4. **Global Synonym Resolution:** Run a final global consolidation pass using the LLM over all batch-classified assets to resolve cross-batch synonym duplicates (e.g., merging IMC002 and LM-302 if they were processed in different batches). Provenance validation and a data-loss safeguard are applied to ensure no candidate assets are dropped.
+2. **Compile-Time Table-Cell Parsing:** A regex cell parser (`parse_existing_report`) extracts names/aliases from existing Markdown reports to automatically sync and append new aliases to the active configuration in-memory.
+3. **Automated Compiler Gate:** The validation script `validate_report.py` audits the report table against raw JSON logs. If a registry trial lists a synonym missing from the configuration aliases, it throws a validation error.
+4. **Self-Healing Loop:** The agent reads validation errors, appends the missing mapping to the configuration builder code/JSON, and re-compiles until the validation gate returns code 0.
+5. **Programmatic Global Synonym Resolution:** Bypasses LLM overhead by running a local programmatic DSU consolidation pass over all classified assets to merge any remaining cross-batch duplicates without data loss.
 
 ---
 

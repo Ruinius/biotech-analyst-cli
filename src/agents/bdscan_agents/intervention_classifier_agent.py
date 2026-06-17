@@ -177,71 +177,6 @@ def classify_interventions(
                 entry["aliases"] = valid_aliases[1:]
                 valid_assets_in_batch.append(entry)
 
-        # 2. Secondary Modality/Target Filter Call
-        if valid_assets_in_batch:
-            candidate_names = [e["canonical_name"] for e in valid_assets_in_batch]
-            audit_prompt = (
-                f"You are auditing a list of potential biotechnology drug/asset names.\n"
-                f"For each name in the JSON array below, determine if it is a specific drug, biologic, or asset name (e.g., Zolbetuximab, Vyloy, TST001, AMG 910).\n"
-                f"It is NOT a valid asset if it is:\n"
-                f"  - A generic modality term (e.g., chemotherapy, immunotherapy, placebo, surgery, radiotherapy, standard of care)\n"
-                f"  - A target protein or gene name (e.g., CLDN18.2, HER2, EGFR, Claudin-18.2)\n"
-                f"  - A general combination description (e.g., chemotherapy combination, triplet therapy)\n\n"
-                f"Candidate names: {json.dumps(candidate_names)}\n\n"
-                f"Respond ONLY with a valid JSON object with exactly two keys:\n"
-                f'  "valid_assets": [ ...names that are genuine specific asset names... ]\n'
-                f'  "generic_or_modality": [ ...names that are generic terms/targets... ]\n'
-                f"No explanation, no other text."
-            )
-            audit_system = (
-                "You are an expert biotech asset auditor. Output only valid JSON. "
-                "Classify any target proteins (like HER2, CLDN18.2, EGFR) or generic classes "
-                "(like chemotherapy, immunotherapy) as 'generic_or_modality'."
-            )
-            try:
-                try:
-                    audit_response = client.query(
-                        audit_prompt, audit_system, stream=False
-                    )
-                except TypeError as e:
-                    if "unexpected keyword argument" in str(e) and "stream" in str(e):
-                        audit_response = client.query(audit_prompt, audit_system)
-                    else:
-                        raise
-                clean_audit = audit_response.strip()
-                if clean_audit.startswith("```"):
-                    clean_audit = re.sub(r"^```[a-z]*\n?", "", clean_audit)
-                    clean_audit = re.sub(r"\n?```$", "", clean_audit.strip())
-                audit_result = json.loads(clean_audit)
-                if (
-                    "valid_assets" in audit_result
-                    or "generic_or_modality" in audit_result
-                ):
-                    valid_set = {
-                        n.lower() for n in audit_result.get("valid_assets", [])
-                    }
-                else:
-                    print(
-                        "Warning: Secondary LLM modality audit response did not match expected schema. Keeping all candidates."
-                    )
-                    valid_set = {n.lower() for n in candidate_names}
-            except Exception as e:
-                print(
-                    f"Warning: Secondary LLM modality audit failed ({e}). Keeping all candidates."
-                )
-                valid_set = {n.lower() for n in candidate_names}
-
-            # Keep only audited valid assets
-            filtered_assets = []
-            for entry in valid_assets_in_batch:
-                if entry["canonical_name"].lower() in valid_set:
-                    filtered_assets.append(entry)
-                else:
-                    print(
-                        f"    ✗ Audited and removed generic term/target: {entry['canonical_name']}"
-                    )
-            valid_assets_in_batch = filtered_assets
-
         return valid_assets_in_batch, classified_background
 
     # We will submit batches to a ThreadPoolExecutor
@@ -280,14 +215,6 @@ def classify_interventions(
             print(f"    ✗ background : {name}")
 
         all_assets.extend(valid_assets_in_batch)
-
-    # Perform global synonym resolution if we have more than one asset
-    if len(all_assets) > 1:
-        all_assets = consolidate_synonyms_globally(
-            assets=all_assets,
-            target_name=target_name,
-            target_synonyms=target_synonyms,
-        )
 
     return all_assets
 

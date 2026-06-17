@@ -14,7 +14,11 @@ from src.agents.bdscan_agents.intervention_classifier_agent import (
     classify_interventions,
 )
 from src.utils.landscape.table_formatters import (
+    EXCLUDE_LOWER,
     _name_priority,
+    clean_drug_name,
+    cluster_synonym_groups,
+    extract_china_drug,
     normalize_drug_name,
     parse_asset_and_aliases,
 )
@@ -230,12 +234,8 @@ def discover_config(
     database_json_dir: str | None = None,
 ) -> dict:
     """
-    Discover pipeline assets from raw registry data using LLM-based classification.
-
-    All unique intervention names from ClinicalTrials.gov, China CDE, and
-    conference abstract files are collected, deduplicated, and classified in
-    batched LLM calls. Only names classified as pipeline assets targeting
-    `target_name` are retained for the landscape table.
+    Discover pipeline assets from raw registry data using local pre-filtering,
+    Disjoint-Set Union (Union-Find) clustering, and targeted LLM classification.
 
     Args:
         ct_data: Merged ClinicalTrials.gov dict {nct_id: study_dict}
@@ -283,9 +283,11 @@ def discover_config(
                 )
 
     # -----------------------------------------------------------------------
-    # 1. Collect (primary_name, [aliases]) pairs from ClinicalTrials.gov
+    # 1. Collect and clean synonym sets programmatically
     # -----------------------------------------------------------------------
-    ct_interventions: list = []
+    synonym_sets: list[set[str]] = []
+
+    # Process ClinicalTrials.gov
     for _nct_id, study in ct_data.items():
         proto = study.get("protocolSection", {})
         arms_mod = proto.get("armsInterventionsModule", {})
@@ -293,25 +295,26 @@ def discover_config(
             intv_type = intv.get("type", "").upper()
             if intv_type in ["DRUG", "BIOLOGICAL", "GENETIC"]:
                 name = intv.get("name", "").strip()
-                other_names = [
-                    n.strip() for n in intv.get("otherNames", []) if n.strip()
-                ]
-                if name:
-                    ct_interventions.append((name, other_names))
+                other_names = intv.get("otherNames", [])
 
-    # -----------------------------------------------------------------------
-    # 2. Collect raw drug names from China CDE
-    # -----------------------------------------------------------------------
-    china_names: list = []
+                names_to_clean = [name] + [o.strip() for o in other_names if o.strip()]
+                cleansed_names = []
+                for n in names_to_clean:
+                    cleaned = clean_drug_name(n, target_name, target_synonyms)
+                    if cleaned and cleaned.lower() not in EXCLUDE_LOWER:
+                        cleansed_names.append(cleaned)
+                if cleansed_names:
+                    synonym_sets.append(set(cleansed_names))
+
+    # Process China CDE direct
     for rec in china_data:
         drug_name = rec.get("drug_name", "").strip()
         if drug_name:
-            china_names.append(drug_name)
+            extracted = extract_china_drug(drug_name, target_name, target_synonyms)
+            if extracted and extracted.lower() not in EXCLUDE_LOWER:
+                synonym_sets.append({extracted})
 
-    # -----------------------------------------------------------------------
-    # 3. Collect candidate codes from conference abstract files
-    # -----------------------------------------------------------------------
-    conf_codes: list = []
+    # Process conferences
     if database_json_dir and os.path.exists(database_json_dir):
         for filepath in glob.glob(
             os.path.join(database_json_dir, "*conferences*.json")
@@ -321,71 +324,70 @@ def discover_config(
                     conf_data = json.load(f)
                 for item in conf_data.get("results", []):
                     title = item.get("title", "")
-                    codes = re.findall(r"\b[A-Za-z]{2,6}-?\d{2,6}[A-Za-z]?\b", title)
-                    conf_codes.extend(codes)
+                    cleaned_title_asset = clean_drug_name(
+                        title, target_name, target_synonyms
+                    )
+                    if (
+                        cleaned_title_asset
+                        and cleaned_title_asset.lower() not in EXCLUDE_LOWER
+                    ):
+                        synonym_sets.append({cleaned_title_asset})
             except Exception as e:
                 print(f"Warning: Failed to process conference file {filepath}: {e}")
 
-    # -----------------------------------------------------------------------
-    # 4. Build flat list of all unique names for classification
-    # -----------------------------------------------------------------------
-    all_raw: list = []
-    for primary, aliases in ct_interventions:
-        all_raw.append(primary)
-        all_raw.extend(aliases)
-    all_raw.extend(china_names)
-    all_raw.extend(conf_codes)
-
-    if not all_raw:
-        print("No intervention names found in registry data.")
-        return {}
+    # Run the programmatic DSU clustering
+    groups = cluster_synonym_groups(synonym_sets)
 
     # -----------------------------------------------------------------------
-    # 5. LLM-based classification
+    # 2. Pick candidate canonical names and classify via LLM
     # -----------------------------------------------------------------------
-    classified_assets = classify_interventions(all_raw, target_name, target_synonyms)
-
-    print(
-        f"\nClassification complete: {len(classified_assets)} pipeline asset(s) "
-        f"identified from {len({n.lower() for n in all_raw})} unique name(s)."
-    )
-
-    # -----------------------------------------------------------------------
-    # 6. Group synonym clusters — only for names classified as assets
-    # -----------------------------------------------------------------------
-    groups: list[set] = []
-    for entry in classified_assets:
-        canon = entry["canonical_name"]
-        aliases = entry.get("aliases", [])
-        names_set = {canon} | set(aliases)
-
-        merged_indices = []
-        for i, g in enumerate(groups):
-            g_normalized = {normalize_drug_name(x) for x in g}
-            if any(
-                normalize_drug_name(n) in g_normalized
-                or n.lower() in {x.lower() for x in g}
-                for n in names_set
-            ):
-                merged_indices.append(i)
-
-        if not merged_indices:
-            groups.append(names_set)
-        else:
-            new_group = names_set
-            for idx in sorted(merged_indices, reverse=True):
-                new_group.update(groups.pop(idx))
-            groups.append(new_group)
-
-    # -----------------------------------------------------------------------
-    # 7. Build config dict — canonical primary key chosen by _name_priority
-    # -----------------------------------------------------------------------
-    config: dict = {}
+    candidate_map = {}  # candidate_name_lower -> group_set
+    candidate_list = []
     for g in groups:
         sorted_names = sorted(g, key=_name_priority)
         primary = sorted_names[0]
-        aliases = sorted_names[1:]
-        config[primary] = {"aliases": aliases}
+        candidate_list.append(primary)
+        candidate_map[primary.lower()] = g
+        for alias in sorted_names[1:]:
+            candidate_map[alias.lower()] = g
+
+    if not candidate_list:
+        print("No candidate intervention names found after cleansing.")
+        return {}
+
+    print(
+        f"[config_builder] Querying LLM to classify {len(candidate_list)} candidate assets..."
+    )
+    classified_assets = classify_interventions(
+        candidate_list, target_name, target_synonyms
+    )
+
+    print(
+        f"\nClassification complete: {len(classified_assets)} pipeline asset(s) "
+        f"identified from {len(candidate_list)} pre-cleansed candidate(s)."
+    )
+
+    # -----------------------------------------------------------------------
+    # 3. Build final config mapping canonical name -> aliases
+    # -----------------------------------------------------------------------
+    config: dict = {}
+    for entry in classified_assets:
+        canon = entry["canonical_name"]
+        aliases = set(entry.get("aliases", []))
+
+        # Merge in the programmatically clustered aliases
+        prog_group = candidate_map.get(canon.lower())
+        if prog_group:
+            aliases.update(prog_group)
+
+        # Remove canonical name itself from aliases
+        aliases.discard(canon)
+
+        # Strip any background exclusions that might have snuck back in
+        filtered_aliases = [a for a in aliases if a.lower() not in EXCLUDE_LOWER]
+
+        sorted_aliases = sorted(filtered_aliases, key=_name_priority)
+        config[canon] = {"aliases": sorted_aliases}
 
     # Persist asset_config.json to the database_json directory
     if database_json_dir:

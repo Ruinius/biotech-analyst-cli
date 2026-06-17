@@ -105,8 +105,8 @@ def test_classify_deduplicates_case_insensitively(mock_llm_cls):
         target_name="CLDN18.2",
     )
 
-    # LLM should be called twice per batch (1 primary call + 1 secondary audit call)
-    assert mock_client.query.call_count == 2
+    # LLM should be called once per batch (1 primary call)
+    assert mock_client.query.call_count == 1
     assert "Zolbetuximab" in result
 
 
@@ -198,8 +198,8 @@ def test_classify_batch_size_respected(mock_llm_cls):
     names = [f"Drug{i:03d}" for i in range(31)]
     classify_interventions(names, target_name="CLDN18.2", batch_size=30)
 
-    # 2 batches: each batch makes 1 primary call and 1 secondary call (since they returned assets) = 4 calls, plus 1 global consolidation call = 5 calls total
-    assert mock_client.query.call_count == 5
+    # 2 batches: each batch makes 1 primary call = 2 calls total
+    assert mock_client.query.call_count == 2
 
 
 @patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
@@ -216,8 +216,8 @@ def test_classify_batch_size_50_uses_one_call(mock_llm_cls):
     names = [f"Drug{i:03d}" for i in range(50)]
     classify_interventions(names, target_name="CLDN18.2", batch_size=50)
 
-    # 1 batch: 1 primary call + 1 secondary call = 2 calls total
-    assert mock_client.query.call_count == 2
+    # 1 batch: 1 primary call = 1 call total
+    assert mock_client.query.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -263,49 +263,9 @@ def test_hallucination_validator_rejects_missing_names(mock_llm_cls):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.agents.bdscan_agents.intervention_classifier_agent.LLMClient")
-def test_modality_filter_catches_generic_terms(mock_llm_cls):
-    """
-    The secondary modality filter must reject entries where the LLM classifies
-    a generic modality term or target gene (not a specific molecule) as an asset.
-    """
-    from src.agents.bdscan_agents.intervention_classifier_agent import (
-        classify_interventions,
-    )
-
-    primary_response = json.dumps(
-        {
-            "assets": [
-                {"canonical_name": "chemotherapy", "aliases": []},
-                {"canonical_name": "HER2", "aliases": []},
-                {"canonical_name": "Zolbetuximab", "aliases": []},
-            ],
-            "background": [],
-        }
-    )
-    secondary_response = json.dumps(
-        {
-            "valid_assets": ["Zolbetuximab"],
-            "generic_or_modality": ["chemotherapy", "HER2"],
-        }
-    )
-    mock_client = MagicMock()
-    mock_client.query.side_effect = [primary_response, secondary_response]
-    mock_llm_cls.return_value = mock_client
-
-    result = classify_interventions(
-        ["chemotherapy", "HER2", "Zolbetuximab"],
-        target_name="CLDN18.2",
-    )
-
-    # §2 filter should remove generic terms
-    result_lower = {
-        r.lower() if isinstance(r, str) else r.get("canonical_name", "").lower()
-        for r in result
-    }
-    assert "chemotherapy" not in result_lower
-    assert "her2" not in result_lower
-    assert "zolbetuximab" in result_lower
+def test_modality_filter_catches_generic_terms_removed():
+    # Deprecated since secondary modality filter is now replaced with programmatic pre-filtering.
+    pass
 
 
 # ---------------------------------------------------------------------------

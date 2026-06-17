@@ -13,7 +13,9 @@ This file indexes the workspace structure and defines architectural rules/constr
     - `architecture.md`: System design and directory layout.
     - `cli_spec.md`: CLI interface parameters and command behaviors.
     - `bdscan_spec.md`: Multi-agent pipeline design for broad scans.
+    - `bdscan_refactor.md`: Architectural design specifications and refactoring plans for broad scan reconciliation.
     - `roadmap.md`: Refactoring milestones and steps.
+    - `de-dup-refactor.md`: Proposal for programmatic de-duplication and self-healing configuration refactor.
 - `tests/`: Project unit, integration, and command-line test suite.
   - `test_agents.py`: Pipeline and agent integration tests.
   - `test_config.py`: LLM client queue, config manager, and retry tests.

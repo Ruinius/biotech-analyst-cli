@@ -72,8 +72,6 @@ class LLMClient:
         system_instruction: str | None = None,
         stream: bool = True,
         temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
     ) -> str:
         """Call the configured LLM API provider with the given prompt."""
         if not self.settings:
@@ -102,8 +100,6 @@ class LLMClient:
                         system_instruction,
                         stream=stream,
                         temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
                     )
                 except Exception as e:
                     return f"Failed to call {provider.capitalize()} API: {str(e)}"
@@ -119,8 +115,6 @@ class LLMClient:
                 {
                     "stream": stream,
                     "temperature": temperature,
-                    "frequency_penalty": frequency_penalty,
-                    "presence_penalty": presence_penalty,
                 },
                 result_queue,
             )
@@ -137,8 +131,6 @@ class LLMClient:
         system_instruction: str | None = None,
         stream: bool = True,
         temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
     ) -> str:
         provider = (self.settings.llm_provider or "gemini").lower()
         if provider == "gemini":
@@ -156,8 +148,6 @@ class LLMClient:
             system_instruction,
             stream=stream,
             temperature=temperature,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
         )
 
     def _make_http_call_with_retries(self, call_func, *args, **kwargs) -> str:
@@ -224,8 +214,6 @@ class LLMClient:
         system_instruction: str | None = None,
         stream: bool = True,
         temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
     ) -> str:
         """Invoke Gemini API directly using HTTP POST (streaming or non-streaming)."""
         api_key = self.settings.gemini_api_key
@@ -239,10 +227,8 @@ class LLMClient:
         generation_config = {}
         if temperature is not None:
             generation_config["temperature"] = temperature
-        if frequency_penalty is not None:
-            generation_config["frequencyPenalty"] = frequency_penalty
-        if presence_penalty is not None:
-            generation_config["presencePenalty"] = presence_penalty
+        # Note: Gemini developer API does not support frequencyPenalty or presencePenalty for most models,
+        # causing HTTP 400 errors ("Penalty is not enabled for this model"). Thus, they are excluded.
         if generation_config:
             payload["generationConfig"] = generation_config
 
@@ -290,8 +276,6 @@ class LLMClient:
         system_instruction: str | None = None,
         stream: bool = True,
         temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
     ) -> str:
         """Invoke OpenRouter API (streaming or non-streaming)."""
         api_key = self.settings.openrouter_api_key
@@ -309,10 +293,6 @@ class LLMClient:
         payload = {"model": model, "messages": messages}
         if temperature is not None:
             payload["temperature"] = temperature
-        if frequency_penalty is not None:
-            payload["frequency_penalty"] = frequency_penalty
-        if presence_penalty is not None:
-            payload["presence_penalty"] = presence_penalty
 
         in_test = "pytest" in sys.modules
 
@@ -359,8 +339,6 @@ class LLMClient:
         system_instruction: str | None = None,
         stream: bool = True,
         temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
     ) -> str:
         """Invoke DeepSeek API (streaming or non-streaming)."""
         api_key = self.settings.deepseek_api_key
@@ -378,10 +356,6 @@ class LLMClient:
         payload = {"model": model, "messages": messages}
         if temperature is not None:
             payload["temperature"] = temperature
-        if frequency_penalty is not None:
-            payload["frequency_penalty"] = frequency_penalty
-        if presence_penalty is not None:
-            payload["presence_penalty"] = presence_penalty
 
         in_test = "pytest" in sys.modules
 

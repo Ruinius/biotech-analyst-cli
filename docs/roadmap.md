@@ -125,7 +125,7 @@ This document lays out the milestones and tasks to implement the new agentic arc
 - [x] **synonym/duplicate resolution**: Resolve duplicate rows (e.g. `IBI343` combos, `IMC002` Chinese suffixes/descriptions) by updating `intervention_classifier_agent.py` prompts to classify combination regimens and parentheticals under core base canonical names, and penalizing messy/long names in `_name_priority` (`table_formatters.py`) to keep canonical keys clean.
 - [x] **Fix LLM repetition/attention loops during web search query generation in `AssetResearchAgent`**:
   - [x] Add a query string length cap and sanitization in `AssetResearchAgent` to prevent repeating or runaway generated queries from breaking DuckDuckGo searches.
-  - [x] Update `LLMClient` (`src/services/llm_client.py`) to support custom `generationConfig` parameters (like `temperature`, `frequency_penalty`, and `presence_penalty`) to penalize repetitive streaming tokens, especially on lightweight/Flash models.
+  - [x] Update `LLMClient` (`src/services/llm_client.py`) to support custom `generationConfig` parameters like `temperature` (frequency/presence penalties were removed for all providers because they are not supported by Gemini developer API models and triggered HTTP 400 errors).
   - [x] Streamline and consolidate the `## web-search` instructions in `learning.md` to prevent prompt inflation and instruction conflict.
 
 ## Future Ideas

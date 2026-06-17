@@ -423,8 +423,6 @@ class AssetResearchAgent:
                 full_prompt,
                 system_instruction,
                 temperature=0.2,
-                frequency_penalty=0.5,
-                presence_penalty=0.5,
             )
 
             history.append(f"User: {prompt}")

@@ -73,10 +73,10 @@ biotech-analyst-cli/
 │   │   │   ├── curator_agent.py    # Stage-end compiler of global learnings
 │   │   │   ├── landscape_compiler_agent.py # Consolidator orchestrating table building
 │   │   │   ├── asset_research_agent.py # 4-turn concurrent row-specific web researcher
-│   │   │   └── synthesis_agent.py  # 10-turn executive report synthesizer
+│   │   │   ├── synthesis_agent.py  # 10-turn executive report synthesizer
+│   │   │   └── intervention_classifier_agent.py # LLM-based asset modality classifier agent
 │   │   └── deepdive_agents/        # Deep-dive agent directory
-│   ├── tools/                      # Programmatic fetchers, summarizers, and classifiers
-│   │   ├── classify_interventions.py # LLM-based asset/modality classifier and synonym resolution
+│   ├── tools/                      # Programmatic fetchers and summarizers
 │   │   ├── fetch_clinicaltrials.py # ClinicalTrials.gov query API
 │   │   ├── fetch_anzctr_ctis.py    # ANZCTR & EU CTIS search API
 │   │   ├── fetch_conferences.py    # ASCO/AACR abstract scraper
@@ -122,7 +122,7 @@ biotech-analyst-cli/
 3. **Pathway Scan (`ba bdscan`):** Runs the agent-based scanner:
    - **Context Stage:** Context Agent writes a short, scientific `context.md`.
    - **Database Search Stage:** Database Search Agent queries 8 databases concurrently, saving raw files in `{target_dir}/database_json/`.
-   - **Reconciliation Stage:** Reconciliation Mapper extracts registry results, runs them through the LLM synonym classifier to group variants into canonical clusters, and writes `{target_dir}/database_json/reconciled.json`.
+   - **Reconciliation Stage:** Reconciliation Mapper extracts registry results, pre-filters background noise, clusters synonyms programmatically via DSU, queries the LLM classifier for modalities/classification, and writes `{target_dir}/database_json/reconciled.json`.
    - **Landscape Table Compilation:** Landscape Compiler Agent calls the modular `landscape` table builders to compile the master `landscape_table.md` in `research/`.
    - **Web Research Stage:** Asset Research Agent conducts concurrent, lock-protected web searches on assets to fill qualitative columns.
    - **Synthesis Stage:** Synthesis Agent drafts strategic reports and compiles them to PDF.

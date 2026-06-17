@@ -265,3 +265,710 @@ def normalize_drug_name(name: str) -> str:
     if not name:
         return ""
     return re.sub(r"[\s\-_\.,/\\]", "", name).lower()
+
+
+# ---------------------------------------------------------------------------
+# Static noise cleansing and filtering blocklists
+# ---------------------------------------------------------------------------
+
+EXCLUDE_LOWER = {
+    "placebo",
+    "chemotherapy",
+    "chemo",
+    "standard of care",
+    "investigator choice",
+    "investigator's choice",
+    "paclitaxel",
+    "docetaxel",
+    "nab-paclitaxel",
+    "gemcitabine",
+    "oxaliplatin",
+    "capecitabine",
+    "cisplatin",
+    "carboplatin",
+    "pembrolizumab",
+    "nivolumab",
+    "sintilimab",
+    "toripalimab",
+    "dostarlimab",
+    "ramucirumab",
+    "leucovorin",
+    "fluorouracil",
+    "5-fluorouracil",
+    "5-fu",
+    "irinotecan",
+    "liposomal irinotecan",
+    "folflri",
+    "folfiri",
+    "folfox",
+    "mfolfox6",
+    "folfirinox",
+    "mfolfirinox",
+    "capox",
+    "flot",
+    "radiation",
+    "surgery",
+    "saline",
+    "dexamethasone",
+    "prednisone",
+    "ondansetron",
+    "aprepitant",
+    "normal saline",
+    "control",
+    "chemotherapies",
+    "placebos",
+    "combination",
+    "combo",
+    "regimen",
+    "antibody",
+    "cart",
+    "car-t",
+    "adc",
+    "bi-specific",
+    "bispecific",
+    "monoclonal",
+    "recombinant",
+    "infusion",
+    "injection",
+    "therapy",
+    "cell",
+    "cells",
+    "autologous",
+    "vaccine",
+    "dendritic",
+    "peptides",
+    "peptide",
+    "vector",
+    "plasmid",
+    "imaging",
+    "agent",
+    "agents",
+    "pet",
+    "tracer",
+    "redirected",
+    "engineered",
+    "chimeric",
+    "targeting",
+    "positive",
+    "expressing",
+    "negative",
+    "expression",
+    "high-expressing",
+    "low-expressing",
+    "positive-expression",
+    "durvalumab",
+    "atezolizumab",
+    "avelumab",
+    "ipilimumab",
+    "tremelimumab",
+    "penpulimab",
+    "camrelizumab",
+    "adebrelimab",
+    "retifanlimab",
+    "zimberelimab",
+    "serplulimab",
+    "pucoclimab",
+    "adegrelimab",
+    "tislelizumab",
+    "cadonilimab",
+    "cardonilizumab",
+    "trastuzumab",
+    "pertuzumab",
+    "bevacizumab",
+    "cetuximab",
+    "panitumumab",
+    "erlotinib",
+    "gefitinib",
+    "afatinib",
+    "osimertinib",
+    "lapatinib",
+    "neratinib",
+    "tucatinib",
+    "folinic",
+    "folinic acid",
+    "l-leucovorin",
+    "leucovorin calcium",
+    "folic acid",
+    "folate",
+    "zoledronic",
+    "zoledronic acid",
+    "denosumab",
+    "fosaprepitant",
+    "granisetron",
+    "palonosetron",
+    "pegfilgrastim",
+    "filgrastim",
+    "tancolux",
+    "epirubicin",
+    "doxorubicin",
+    "methotrexate",
+    "cyclophosphamide",
+    "fludarabine",
+    "etoposide",
+    "vincristine",
+    "vinblastine",
+    "vinorelbine",
+    "temozolomide",
+    "dacarbazine",
+    "procarbazine",
+    "carmustine",
+    "lomustine",
+    "streptozocin",
+    "mitomycin",
+    "bleomycin",
+    "dactinomycin",
+    "daunorubicin",
+    "idarubicin",
+    "mitoxantrone",
+    "plicamycin",
+    "hydroxyurea",
+    "asparaginase",
+    "pegaspargase",
+    "bortezomib",
+    "carfilzomib",
+    "ixazomib",
+    "thalidomide",
+    "lenalidomide",
+    "pomalidomide",
+    "olaparib",
+    "rucaparib",
+    "niraparib",
+    "talazoparib",
+    "veliparib",
+    "fruquintinib",
+    "surufatinib",
+    "donafenib",
+    "regorafenib",
+    "sorafenib",
+    "sunitinib",
+    "pazopanib",
+    "axitinib",
+    "cabozantinib",
+    "lenvatinib",
+    "vandetanib",
+    "nintedanib",
+    "tivozanib",
+    "alectinib",
+    "crizotinib",
+    "ceritinib",
+    "brigatinib",
+    "lorlatinib",
+    "dabrafenib",
+    "vemurafenib",
+    "encorafenib",
+    "trametinib",
+    "cobimetinib",
+    "binimetinib",
+    "selumetinib",
+    "everolimus",
+    "temsirolimus",
+    "sirolimus",
+    "sox",
+    "xelox",
+    "folfoxiri",
+    "folfox4",
+    "folfox6",
+    "mfolfox",
+    "gemcitabine+albumin-bound",
+    "gemcitabine+nab-paclitaxel",
+    "gem/nab-paclitaxel",
+    "gem-abx",
+    "albumin-bound",
+    "abraxane",
+    "keytruda",
+    "opdivo",
+    "tecentriq",
+    "imfinzi",
+    "libtayo",
+    "jemperli",
+    "erbitux",
+    "vectibix",
+    "avastin",
+    "cyramza",
+    "herceptin",
+    "perjeta",
+    "kadcyla",
+    "enhertu",
+    "alunbrig",
+    "alecensa",
+    "xalkori",
+    "zykadia",
+    "lorbrena",
+    "tafinlar",
+    "zelboraf",
+    "braftovi",
+    "mekinist",
+    "cotellic",
+    "mektovi",
+    "koselugo",
+    "afinitor",
+    "torisel",
+    "rapamune",
+    "inlyta",
+    "sutent",
+    "votrient",
+    "nexavar",
+    "stivarga",
+    "caprelsa",
+    "lartruvo",
+    "portrazza",
+    "xofigo",
+    "ziga",
+    "yondelis",
+    "halaven",
+    "ixempra",
+    "elsparc",
+    "erwinase",
+    "oncaspar",
+    "velcade",
+    "kyprolis",
+    "ninlaro",
+    "thalomid",
+    "revlimid",
+    "pomalyst",
+    "lynparza",
+    "rubraca",
+    "zejula",
+    "talzenna",
+    "eluate",
+    "support",
+    "care",
+    "assignment",
+    "single",
+    "group",
+    "open-label",
+    "dose-escalation",
+    "escalation",
+    "expansion",
+    "dose",
+    "cohort",
+    "arm",
+    "randomized",
+    "double-blind",
+    "efficacy",
+    "safety",
+    "tolerability",
+    "pharmacokinetics",
+    "bioavailability",
+    "pharmacodynamics",
+    "immunogenicity",
+    "maximum",
+    "tolerated",
+    "dose-limiting",
+    "toxicity",
+    "toxicities",
+    "adverse",
+    "events",
+    "reaction",
+    "reactions",
+    "syndicated",
+    "registry",
+    "scraped",
+    "scrape",
+    "scraping",
+    "scrub",
+    "clean",
+    "format",
+    "report",
+    "document",
+    "file",
+    "json",
+    "txt",
+    "md",
+    "pdf",
+    "html",
+    "xml",
+    "csv",
+    "insulin",
+    "lispro",
+    "humalog",
+    "novolog",
+    "apidra",
+    "fiasp",
+    "lyumjev",
+    "admelog",
+}
+
+GENERIC_WORDS = {
+    "placebo",
+    "chemotherapy",
+    "standard of care",
+    "investigator choice",
+    "investigator's choice",
+    "radiation",
+    "surgery",
+    "saline",
+    "control",
+    "combination",
+    "combo",
+    "regimen",
+    "antibody",
+    "cart",
+    "car-t",
+    "adc",
+    "bi-specific",
+    "bispecific",
+    "monoclonal",
+    "recombinant",
+    "infusion",
+    "injection",
+    "therapy",
+    "cell",
+    "cells",
+    "autologous",
+    "vaccine",
+    "dendritic",
+    "peptides",
+    "peptide",
+    "vector",
+    "plasmid",
+    "imaging",
+    "agent",
+    "agents",
+    "pet",
+    "tracer",
+    "redirected",
+    "engineered",
+    "chimeric",
+    "targeting",
+    "positive",
+    "expressing",
+    "negative",
+    "expression",
+    "high-expressing",
+    "low-expressing",
+    "positive-expression",
+    "support",
+    "care",
+    "assignment",
+    "single",
+    "group",
+    "open-label",
+    "dose-escalation",
+    "escalation",
+    "expansion",
+    "dose",
+    "cohort",
+    "arm",
+    "randomized",
+    "double-blind",
+    "efficacy",
+    "safety",
+    "tolerability",
+    "pharmacokinetics",
+    "bioavailability",
+    "pharmacodynamics",
+    "immunogenicity",
+    "chemo",
+    "placebos",
+    "comb",
+    "regim",
+}
+
+
+def clean_drug_name(
+    name: str, target_name: str = "", target_synonyms: list | None = None
+) -> str:
+    """
+    Clean a raw intervention or drug name programmatically by removing HTML, splitting
+    combinations, checking exclusions/stems/generic terms, and isolating the asset code/name.
+    """
+    if not name:
+        return ""
+
+    # Build target terms for exclusion checks (we don't want target name itself as an asset)
+    target_terms = set()
+    if target_name:
+        target_terms.add(target_name.lower())
+        target_terms.add(re.sub(r"[^a-z0-9]", "", target_name.lower()))
+    if target_synonyms:
+        for ts in target_synonyms:
+            target_terms.add(ts.lower())
+            target_terms.add(re.sub(r"[^a-z0-9]", "", ts.lower()))
+
+    # Strip HTML tags
+    name = re.sub(r"<[^>]+>", " ", name)
+
+    # Split by common combinators, preserving hyphenated names
+    parts = re.split(
+        r"[\+\/]|联合|和|\bcombined with\b|\bplus\b|\band\b", name, flags=re.IGNORECASE
+    )
+    for part in parts:
+        part_clean = part.strip()
+        # Find alphanumeric patterns
+        codes = re.findall(r"[A-Za-z0-9\-]{3,15}", part_clean)
+        valid_codes = []
+        for c in codes:
+            c_lower = c.lower()
+            c_alnum = re.sub(r"[^a-z0-9]", "", c_lower)
+            if c_lower in EXCLUDE_LOWER or c_alnum in EXCLUDE_LOWER:
+                continue
+            if c_lower in target_terms or c_alnum in target_terms:
+                continue
+            if any(gw in c_lower for gw in GENERIC_WORDS):
+                continue
+            if len(c) < 3:
+                continue
+
+            has_letter = any(char.isalpha() for char in c)
+            has_digit = any(char.isdigit() for char in c)
+
+            # Check USAN/INN stems
+            usan_stems = (
+                "mab",
+                "tug",
+                "mig",
+                "bart",
+                "tib",
+                "cept",
+                "can",
+                "parib",
+                "ciclib",
+                "degib",
+            )
+            is_stem = len(c) >= 5 and any(c_lower.endswith(s) for s in usan_stems)
+
+            # Known biotech assets for early validation
+            is_known_name = any(
+                k in c_lower
+                for k in [
+                    "zolbet",
+                    "osem",
+                    "vyloy",
+                    "spevat",
+                    "givas",
+                    "greson",
+                    "sones",
+                    "satric",
+                    "satri",
+                    "ribomab",
+                    "paxalisib",
+                    "erasca",
+                    "medicinova",
+                ]
+            )
+
+            if (has_letter and has_digit) or is_stem or is_known_name:
+                c_clean = c.strip("-").strip()
+                c_clean_lower = c_clean.lower()
+                c_clean_alnum = re.sub(r"[^a-z0-9]", "", c_clean_lower)
+                if (
+                    c_clean
+                    and c_clean_lower not in EXCLUDE_LOWER
+                    and c_clean_lower not in target_terms
+                    and c_clean_alnum not in target_terms
+                ):
+                    if not any(gw in c_clean_lower for gw in GENERIC_WORDS):
+                        valid_codes.append(c_clean)
+
+        if valid_codes:
+            return valid_codes[0]
+
+    # Fallback to cleaning the first split part
+    first_part = parts[0].strip()
+    first_part = re.sub(r"\(.*?\)", "", first_part)
+    first_part = re.sub(r"（.*?）", "", first_part)
+    for prefix in [
+        "注射用",
+        "重组人源化",
+        "单克隆抗体",
+        "自体",
+        "细胞",
+        "注射液",
+        "注射用重组",
+    ]:
+        first_part = first_part.replace(prefix, "")
+    first_part = first_part.replace("抗体", "")
+    first_part_clean = first_part.strip()
+
+    first_part_lower = first_part_clean.lower()
+    first_part_alnum = re.sub(r"[^a-z0-9]", "", first_part_lower)
+
+    if (
+        first_part_lower not in EXCLUDE_LOWER
+        and first_part_lower not in target_terms
+        and first_part_alnum not in target_terms
+    ):
+        if not any(gw in first_part_lower for gw in GENERIC_WORDS):
+            # Try to extract English words if Chinese characters are present
+            eng_words = re.findall(r"[A-Za-z0-9\-]{3,15}", first_part_clean)
+            if eng_words:
+                ret = eng_words[0]
+                ret_lower = ret.lower()
+                ret_alnum = re.sub(r"[^a-z0-9]", "", ret_lower)
+                if (
+                    ret_lower not in EXCLUDE_LOWER
+                    and ret_lower not in target_terms
+                    and ret_alnum not in target_terms
+                ):
+                    if not any(gw in ret_lower for gw in GENERIC_WORDS):
+                        return ret
+            return first_part_clean
+
+    return ""
+
+
+def extract_china_drug(
+    drug_name: str, target_name: str = "", target_synonyms: list | None = None
+) -> str:
+    """Extract and clean drug name from China CDE records."""
+    if not drug_name:
+        return ""
+    main_part = re.split(r"[\(（]", drug_name)[0]
+    cleaned = clean_drug_name(main_part, target_name, target_synonyms)
+    if cleaned:
+        return cleaned
+
+    # Search in parentheticals/codes
+    codes = re.findall(r"[A-Za-z0-9\-]{3,15}", drug_name)
+    target_terms = set()
+    if target_name:
+        target_terms.add(target_name.lower())
+        target_terms.add(re.sub(r"[^a-z0-9]", "", target_name.lower()))
+    if target_synonyms:
+        for ts in target_synonyms:
+            target_terms.add(ts.lower())
+            target_terms.add(re.sub(r"[^a-z0-9]", "", ts.lower()))
+
+    for c in codes:
+        c_lower = c.lower()
+        c_alnum = re.sub(r"[^a-z0-9]", "", c_lower)
+        if c_lower in EXCLUDE_LOWER or c_alnum in EXCLUDE_LOWER:
+            continue
+        if c_lower in target_terms or c_alnum in target_terms:
+            continue
+        if any(gw in c_lower for gw in GENERIC_WORDS):
+            continue
+        has_letter = any(char.isalpha() for char in c)
+        has_digit = any(char.isdigit() for char in c)
+        usan_stems = (
+            "mab",
+            "tug",
+            "mig",
+            "bart",
+            "tib",
+            "cept",
+            "can",
+            "parib",
+            "ciclib",
+            "degib",
+        )
+        is_stem = len(c) >= 5 and any(c_lower.endswith(s) for s in usan_stems)
+        is_known_name = any(
+            k in c_lower
+            for k in [
+                "zolbet",
+                "osem",
+                "vyloy",
+                "spevat",
+                "givas",
+                "greson",
+                "sones",
+                "satric",
+                "satri",
+                "ribomab",
+                "paxalisib",
+                "erasca",
+                "medicinova",
+            ]
+        )
+        if (has_letter and has_digit) or is_stem or is_known_name:
+            c_clean = c.strip("-").strip()
+            c_clean_lower = c_clean.lower()
+            if (
+                c_clean
+                and c_clean_lower not in EXCLUDE_LOWER
+                and c_clean_lower not in target_terms
+            ):
+                if not any(gw in c_clean_lower for gw in GENERIC_WORDS):
+                    return c_clean
+    return ""
+
+
+class UnionFind:
+    """Disjoint-Set Union (Union-Find) data structure for clustering synonyms."""
+
+    def __init__(self):
+        self.parent = {}
+
+    def find(self, item):
+        if item not in self.parent:
+            self.parent[item] = item
+            return item
+        path = []
+        while self.parent[item] != item:
+            path.append(item)
+            item = self.parent[item]
+        for node in path:
+            self.parent[node] = item
+        return item
+
+    def union(self, item1, item2):
+        root1 = self.find(item1)
+        root2 = self.find(item2)
+        if root1 != root2:
+            self.parent[root1] = root2
+
+
+def cluster_synonym_groups(synonym_sets: list[set[str]]) -> list[set[str]]:
+    """
+    Cluster synonym sets programmatically using Union-Find.
+
+    If set A and set B share any element (case-insensitively or via normalized name),
+    they are merged into the same cluster.
+    """
+    uf = UnionFind()
+
+    # We map normalized/lowercase names to their exact original name in our vocabulary
+    exact_names = {}
+
+    # Helper to canonicalize representation for matching
+    def canonical_reprs(name):
+        return [name.lower(), normalize_drug_name(name)]
+
+    # First pass: map canonical representations to parent-child references
+    all_names = set()
+    for s in synonym_sets:
+        for val in s:
+            if not val:
+                continue
+            all_names.add(val)
+            for rep in canonical_reprs(val):
+                exact_names[rep] = val
+
+    # Initialize union-find entries for all exact names
+    for name in all_names:
+        uf.find(name)
+
+    # Union names within each set
+    for s in synonym_sets:
+        lst = [val for val in s if val]
+        if len(lst) > 1:
+            first = lst[0]
+            for val in lst[1:]:
+                uf.union(first, val)
+
+    # Union names across sets that share normalized representations
+    # E.g. "GDC-0084" in Set A and "GDC0084" in Set B should cause a union.
+    rep_to_names = {}
+    for name in all_names:
+        for rep in canonical_reprs(name):
+            if rep not in rep_to_names:
+                rep_to_names[rep] = []
+            rep_to_names[rep].append(name)
+
+    for _rep, names_list in rep_to_names.items():
+        if len(names_list) > 1:
+            first = names_list[0]
+            for other in names_list[1:]:
+                uf.union(first, other)
+
+    # Group original names by their union-find root
+    groups = {}
+    for name in all_names:
+        root = uf.find(name)
+        if root not in groups:
+            groups[root] = set()
+        groups[root].add(name)
+
+    return list(groups.values())

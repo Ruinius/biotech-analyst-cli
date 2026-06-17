@@ -495,8 +495,6 @@ def test_llm_client_parameters_gemini(mock_post, mock_load_config):
     response = client.query(
         "test prompt",
         temperature=0.3,
-        frequency_penalty=0.6,
-        presence_penalty=0.7,
     )
     assert response == "Hello Gemini"
 
@@ -504,8 +502,8 @@ def test_llm_client_parameters_gemini(mock_post, mock_load_config):
     assert "generationConfig" in called_json
     gen_config = called_json["generationConfig"]
     assert gen_config["temperature"] == 0.3
-    assert gen_config["frequencyPenalty"] == 0.6
-    assert gen_config["presencePenalty"] == 0.7
+    assert "frequencyPenalty" not in gen_config
+    assert "presencePenalty" not in gen_config
 
 
 @patch("src.services.llm_client.load_config")
@@ -530,15 +528,13 @@ def test_llm_client_parameters_openrouter(mock_post, mock_load_config):
     response = client.query(
         "test prompt",
         temperature=0.4,
-        frequency_penalty=0.5,
-        presence_penalty=0.8,
     )
     assert response == "Hello OpenRouter"
 
     called_json = mock_post.call_args[1]["json"]
     assert called_json["temperature"] == 0.4
-    assert called_json["frequency_penalty"] == 0.5
-    assert called_json["presence_penalty"] == 0.8
+    assert "frequency_penalty" not in called_json
+    assert "presence_penalty" not in called_json
 
 
 @patch("src.services.llm_client.load_config")
@@ -563,12 +559,10 @@ def test_llm_client_parameters_deepseek(mock_post, mock_load_config):
     response = client.query(
         "test prompt",
         temperature=0.5,
-        frequency_penalty=0.2,
-        presence_penalty=0.1,
     )
     assert response == "Hello DeepSeek"
 
     called_json = mock_post.call_args[1]["json"]
     assert called_json["temperature"] == 0.5
-    assert called_json["frequency_penalty"] == 0.2
-    assert called_json["presence_penalty"] == 0.1
+    assert "frequency_penalty" not in called_json
+    assert "presence_penalty" not in called_json

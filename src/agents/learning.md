@@ -3,22 +3,16 @@
 This file contains accumulated learnings, heuristics, and constraints gathered by the Biotech Analyst CLI agents during execution.
 
 ## database-search
-- Avoid PubChem for protein targets and biologics; the PUG REST API relies on Compound Identifiers (CIDs) and consistently returns 404 errors.
-- Search openFDA by brand (e.g., “Vyloy”) or generic name (e.g., “zolbetuximab”) as target names are not indexed in safety and label data.
-- On ClinicalTrials.gov, use English symbols (CLDN18.2), spaced synonyms (Claudin 18.2), and hyphenated variants (Claudin-18.2) to capture maximum multinational sponsor records.
-- In NMPA CDE, use English gene symbols first; formal Chinese descriptions (紧密连接蛋白) capture specific domestic programs (e.g., Innovent), while phonetic translations often fail.
-- Identify Chinese biologics/ADCs in NMPA CDE/ChiCTR using the “注射用” (Injectable) prefix and alphanumeric asset codes (e.g., “CT041”, “JS107”, “IBI343”).
-- Chinese WHO registries (ChiCTR/ICTRP) favor English official gene symbols (CLDN18.2); Mandarin phonetic or formal translations typically yield zero results.
-- Use EU CTIS and ANZCTR to track "Biology before Stage" protocols and multiplex testing (CLDN18.2, HER2, PD-L1, MSI, EBV) for patient stratification.
-- Conference databases track resistance mechanisms such as secondary loss of expression and intrapatient heterogeneity between primary and metastatic sites.
-- Monitor conference abstracts for target expansion into emerging or rare indications (Biliary Tract, Pancreatic, Urachal, or Mucinous Ovarian Cancer).
-- Patent databases (Lens.org) are sensitive to decimals; search by parent protein name (e.g., “Claudin 18”) and avoid generic drug names (e.g., “Zolbetuximab”).
-- In IP searches, focus on Extracellular Loop 1 (ECL1) and isoform specificity to avoid cross-reactivity with off-target tissue (e.g., CLDN18.1 in lung).
-- ClinicalTrials.gov distinguishes inclusion thresholds by modality: high (e.g., ≥75% for mAbs) vs. moderate (e.g., ≥50% for ADCs/CAR-Ts) using 2+/3+ IHC intensity.
-- Access NMPA CDE to monitor the “immuno-cytotoxic convergence” trend, specifically Phase III registrations of ADCs combined with PD-1 inhibitors in first-line settings.
-- Use openFDA to identify labeled toxicity patterns for approved targets, such as severe nausea, vomiting, and hematologic abnormalities (e.g., neutropenia).
-- Mark a search as complete only after attempting gene symbols, spaced synonyms, parent protein names, and specific diagnostic clones (e.g., “43-14A”).
-- For combination regimens (e.g. `IBI343,sintilimab...`) and Chinese CDE records containing trial descriptions/suffixes in parentheses (e.g., `IMC002注射液 (...)`), use the LLM agent to cleanly consolidate them under their base canonical molecule names, mapping the messy combination/trial strings to aliases. Penalize combo-regimen indicators and trial title patterns in the canonical sorting keys to prevent messy names from becoming the canonical table rows.
+- Use English gene symbols (CLDN18.2), spaced synonyms (Claudin 18.2), and hyphenated variants across all registries; use alphanumeric codes (e.g., IBI343, JS107) as primary identifiers for Chinese ADC and CAR-T programs.
+- In NMPA CDE, use formal Chinese descriptions (紧密连接蛋白) to capture domestic programs from Innovent or CSPC; alphanumeric codes (e.g., JS107, SYSA1801) are the most effective identifiers for high-potency ADCs.
+- Distinguish IHC inclusion thresholds by modality: high expression (≥75%, 2+/3+ intensity) for monoclonal antibodies versus moderate expression (≥40-50%) for potent ADCs and CAR-T therapies.
+- Track CLDN18.2 as part of the standard "Big 5" biomarker panel (alongside HER2, PD-L1, MSI, and EBV) in EU CTIS and SAPHIR registries for patient stratification in gastric cancer.
+- Focus Lens.org searches on parent protein names (Claudin 18) and foundational inventors (Sahin, Türeci); commercial diagnostic clone names like "43-14A" typically yield zero results in IP titles and abstracts.
+- Monitor conference abstracts for resistance mechanisms such as secondary loss of target expression and intrapatient heterogeneity between primary gastric tumors and metastatic sites (e.g., peritoneal or lung).
+- Track target expansion beyond Gastric/GEJ cancer into Pancreatic (PDAC), Biliary Tract (BTC), Colorectal (CRC), Urachal, and Small Bowel Adenocarcinomas.
+- Search openFDA by brand (Vyloy) or generic name (zolbetuximab) to identify labeled toxicities, primarily severe nausea, vomiting, neutropenia, and infusion-related reactions.
+- Monitor NMPA CDE for "immuno-cytotoxic convergence" trends, specifically Phase III registrations of CLDN18.2 ADCs combined with PD-1 inhibitors (e.g., sintilimab, toripalimab) in first-line settings.
+- Use an LLM agent to map combination regimens and trial-specific suffixes (e.g., "IMC002注射液 (...)") to base canonical molecule names to prevent messy trial titles from becoming table rows.
 
 ## web-search
 - **Query Formatting & Length Constraints**: Keep queries concise, focus on a few key terms, and avoid complex syntax to prevent search engine errors. Strip special characters or shorten queries if no results are found.

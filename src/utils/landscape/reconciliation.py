@@ -294,8 +294,10 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
         classify_interventions,  # noqa: PLC0415
     )
     from src.utils.landscape.table_formatters import (  # noqa: PLC0415
+        EXCLUDE_LOWER,
         _name_priority,
-        normalize_drug_name,
+        clean_drug_name,
+        cluster_synonym_groups,
     )
 
     db_dir = target_dir / "database_json"
@@ -375,33 +377,78 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
         return
 
     # -----------------------------------------------------------------------
-    # Step 2: Trivial exact-dedup (preprocessing only — case-insensitive)
-    # -----------------------------------------------------------------------
-    all_candidate_names = _extract_candidate_names(all_asset_records)
-
-    seen_lower: dict = {}
-    for n in all_candidate_names:
-        stripped = n.strip()
-        key = stripped.lower()
-        if stripped and key not in seen_lower:
-            seen_lower[key] = stripped
-    unique_names = list(seen_lower.values())
-
-    print(
-        f"[Reconciliation] {len(unique_names)} unique candidate names extracted from {len(all_asset_records)} records."
-    )
-
-    # -----------------------------------------------------------------------
-    # Step 3: LLM-based classification and grouping
-    # NOTE: classify_interventions returns set[str] in §3; extended to list[dict] in §2.
-    # We infer target_name from the folder_safe_name as a rough proxy here.
-    # The orchestrator will pass the real target_name once §1 is wired in fully.
+    # Step 2: Collect and clean synonym sets programmatically
     # -----------------------------------------------------------------------
     target_name = folder_safe_name.replace("_", " ").replace("-", " ")
+    synonym_sets: list[set[str]] = []
+
+    # Build synonym groups by record_id
+    id_to_names = {}
+    for rec in all_asset_records:
+        rec_id = rec.get("record_id")
+        name = rec.get("name")
+        if not name:
+            continue
+        cleaned = clean_drug_name(name, target_name)
+        if cleaned and cleaned.lower() not in EXCLUDE_LOWER:
+            if rec_id:
+                if rec_id not in id_to_names:
+                    id_to_names[rec_id] = set()
+                id_to_names[rec_id].add(cleaned)
+            else:
+                synonym_sets.append({cleaned})
+
+    for names_set in id_to_names.values():
+        synonym_sets.append(names_set)
+
+    # Include any direct otherNames from clinicaltrials
+    for rec in all_asset_records:
+        if rec.get("source") == "clinicaltrials":
+            other = rec.get("other_names") or []
+            cleaned_others = []
+            for o in other:
+                cleaned_o = clean_drug_name(o, target_name)
+                if cleaned_o and cleaned_o.lower() not in EXCLUDE_LOWER:
+                    cleaned_others.append(cleaned_o)
+            primary_cleaned = clean_drug_name(rec["name"], target_name)
+            if primary_cleaned and primary_cleaned.lower() not in EXCLUDE_LOWER:
+                cleaned_others.append(primary_cleaned)
+            if cleaned_others:
+                synonym_sets.append(set(cleaned_others))
+
+    # Run the programmatic DSU clustering
+    groups = cluster_synonym_groups(synonym_sets)
+
+    # -----------------------------------------------------------------------
+    # Step 3: LLM-based classification of candidate canonical assets
+    # -----------------------------------------------------------------------
+    candidate_map = {}  # name_lower -> group_set
+    candidate_list = []
+    for g in groups:
+        sorted_names = sorted(g, key=_name_priority)
+        primary = sorted_names[0]
+        candidate_list.append(primary)
+        candidate_map[primary.lower()] = g
+        for alias in sorted_names[1:]:
+            candidate_map[alias.lower()] = g
+
+    if not candidate_list:
+        print("[Reconciliation] No candidate drug names found after pre-filtering.")
+        reconciled_path.write_text(
+            json.dumps({}, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        log_path.write_text(
+            json.dumps({"info": "No candidates"}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return
 
     try:
+        print(
+            f"[Reconciliation] Querying LLM to classify {len(candidate_list)} candidate assets..."
+        )
         classified_assets = classify_interventions(
-            names=unique_names,
+            names=candidate_list,
             target_name=target_name,
         )
     except RuntimeError as e:
@@ -416,61 +463,34 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
         )
         return
 
-    classified_lower = set()
-    for entry in classified_assets:
-        classified_lower.add(entry["canonical_name"].lower())
-        for a in entry.get("aliases", []):
-            classified_lower.add(a.lower())
-
     # -----------------------------------------------------------------------
-    # Step 4: Group synonyms and assign records to canonical entries
+    # Step 4: Map synonyms and initialize reconciled entry structure
     # -----------------------------------------------------------------------
-    groups: list[set] = []
-    modality_map: dict[str, str] = {}
-    for entry in classified_assets:
-        canon = entry["canonical_name"]
-        aliases = entry.get("aliases", [])
-        names_set = {canon} | set(aliases)
-        modality_map[canon.lower()] = entry.get("modality", "N/A")
-        for alias in aliases:
-            modality_map[alias.lower()] = entry.get("modality", "N/A")
-
-        merged_indices = []
-        names_norms = {normalize_drug_name(n) for n in names_set}
-        names_lowers = {n.lower() for n in names_set}
-        for i, g in enumerate(groups):
-            g_norms = {normalize_drug_name(x) for x in g}
-            g_lowers = {x.lower() for x in g}
-            if not names_norms.isdisjoint(g_norms) or not names_lowers.isdisjoint(
-                g_lowers
-            ):
-                merged_indices.append(i)
-
-        if not merged_indices:
-            groups.append(names_set)
-        else:
-            new_group = names_set
-            for idx in sorted(merged_indices, reverse=True):
-                new_group.update(groups.pop(idx))
-            groups.append(new_group)
-
-    # Choose canonical name per group
     canonical_map: dict[str, str] = {}  # any_name_lower → canonical
     reconciled: dict = {}
 
-    for g in groups:
-        sorted_names = sorted(g, key=_name_priority)
-        canonical = sorted_names[0]
-        aliases = sorted_names[1:]
+    for entry in classified_assets:
+        canon = entry["canonical_name"]
+        aliases = set(entry.get("aliases", []))
 
-        for n in g:
-            canonical_map[n.lower()] = canonical
+        # Merge in the programmatic group synonyms
+        prog_group = candidate_map.get(canon.lower())
+        if prog_group:
+            aliases.update(prog_group)
 
-        reconciled[canonical] = {
-            "canonical_name": canonical,
-            "aliases": aliases,
+        aliases.discard(canon)
+        filtered_aliases = [a for a in aliases if a.lower() not in EXCLUDE_LOWER]
+
+        sorted_aliases = sorted(filtered_aliases, key=_name_priority)
+
+        for name in [canon] + sorted_aliases:
+            canonical_map[name.lower()] = canon
+
+        reconciled[canon] = {
+            "canonical_name": canon,
+            "aliases": sorted_aliases,
             "sponsors": [],
-            "modality": modality_map.get(canonical.lower(), "N/A"),
+            "modality": entry.get("modality", "N/A"),
             "lead_indication": "N/A",
             "trials": {
                 "clinicaltrials": [],
@@ -489,9 +509,14 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
 
     for rec in all_asset_records:
         name_key = rec["name"].lower()
-        canonical = canonical_map.get(name_key) or canonical_map.get(
-            normalize_drug_name(rec["name"])
-        )
+        cleaned_name = clean_drug_name(rec["name"], target_name)
+        cleaned_key = cleaned_name.lower() if cleaned_name else ""
+
+        canonical = None
+        if name_key in canonical_map:
+            canonical = canonical_map[name_key]
+        elif cleaned_key in canonical_map:
+            canonical = canonical_map[cleaned_key]
 
         if not canonical and rec.get("is_raw_title"):
             # Skip raw title records that weren't matched
@@ -503,7 +528,7 @@ def reconcile_all_sources(target_dir: Path, folder_safe_name: str) -> None:
                 {
                     "name": rec["name"],
                     "source": rec["source"],
-                    "reason": "LLM classified as background",
+                    "reason": "Programmatic cleansing filter or LLM background classification",
                 }
             )
             continue
