@@ -1,3 +1,3 @@
-## 2024-06-17 - O(N*M) nested loop set comprehension bottleneck
-**Learning:** Found a quadratic time complexity bottleneck in `src/utils/landscape/reconciliation.py` where a nested `any()` loop recalculated normalized strings (`normalize_drug_name()`) and set comprehensions for every candidate name against every existing group.
-**Action:** When comparing sets or groups of string data against multiple items in Python, precompute lowercase/normalized transformations outside of loops and use `set.isdisjoint()` for O(1) intersection checks rather than `any()` loops.
+## 2023-10-27 - [Memoize Regex Compilation in Loop]
+**Learning:** In python, if a string format is used to construct a regex pattern inside a nested loop and `re.search` is called, python compiles the regex each time. While the `re` module internally caches some expressions (up to 512 by default), when dynamically constructed strings vary often, it results in a massive performance penalty.
+**Action:** When a regular expression is dynamically constructed from a set of parameters that is static for an outer loop (like an asset's aliases), compile it once and memoize it. Using `tuple(aliases)` as a dictionary key is an effective memoization strategy.

@@ -51,16 +51,29 @@ def clean_sponsor(sponsor: str) -> str:
     return sponsor.strip()
 
 
+_COMPILED_PATTERNS = {}
+
+
 def matches_drug(text: str, aliases: list) -> bool:
     """Return True if any alias appears as a whole word in text."""
     if not text:
         return False
-    pattern = (
-        r"(?<![a-zA-Z0-9])("
-        + "|".join(re.escape(alias) for alias in aliases)
-        + r")(?![a-zA-Z0-9])"
-    )
-    return bool(re.search(pattern, text, re.IGNORECASE))
+
+    # Create a cache key from the aliases
+    key = tuple(aliases)
+
+    # Get or compile the regex pattern
+    pattern = _COMPILED_PATTERNS.get(key)
+    if pattern is None:
+        pattern_str = (
+            r"(?<![a-zA-Z0-9])("
+            + "|".join(re.escape(alias) for alias in aliases)
+            + r")(?![a-zA-Z0-9])"
+        )
+        pattern = re.compile(pattern_str, re.IGNORECASE)
+        _COMPILED_PATTERNS[key] = pattern
+
+    return bool(pattern.search(text))
 
 
 def parse_ct_phase(phases_list: list) -> tuple:

@@ -536,14 +536,14 @@ class DatabaseSearchAgent:
                 for h_turn in history_turns:
                     prompt_parts.append(f'  <turn number="{h_turn["number"]}">')
                     prompt_parts.append(
-                        f'    <instructions>{h_turn["instructions"]}</instructions>'
+                        f"    <instructions>{h_turn['instructions']}</instructions>"
                     )
                     prompt_parts.append(
-                        f'    <response>{h_turn["response"]}</response>'
+                        f"    <response>{h_turn['response']}</response>"
                     )
                     if "tool_result" in h_turn:
                         prompt_parts.append(
-                            f'    <tool_result>{h_turn["tool_result"]}</tool_result>'
+                            f"    <tool_result>{h_turn['tool_result']}</tool_result>"
                         )
                     prompt_parts.append("  </turn>")
                 prompt_parts.append("</conversation_history>\n")
