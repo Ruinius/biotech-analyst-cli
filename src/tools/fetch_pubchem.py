@@ -14,9 +14,10 @@ import urllib.request
 
 def query_pug_rest(path):
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/{path}"
+
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:  # nosec B310
             return json.loads(response.read().decode("utf-8"))
     except Exception as e:
         print(f"Error querying PubChem PUG REST API ({path}): {e}", file=sys.stderr)

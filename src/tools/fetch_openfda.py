@@ -15,10 +15,11 @@ import urllib.request
 def query_openfda(endpoint, query_str, limit=5):
     encoded_query = urllib.parse.quote(query_str, safe="+=&:")
     url = f"https://api.fda.gov/{endpoint}.json?search={encoded_query}&limit={limit}"
+
     print(f"Querying openFDA {endpoint} with: {query_str}...")
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:  # nosec B310
             return json.loads(response.read().decode("utf-8"))
     except Exception as e:
         print(f"Error querying openFDA {endpoint}: {e}", file=sys.stderr)

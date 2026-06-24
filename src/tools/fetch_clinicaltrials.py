@@ -26,7 +26,7 @@ def fetch_studies(term, limit=200):
 
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:  # nosec B310
                 data = json.loads(response.read().decode("utf-8"))
 
             studies = data.get("studies", [])
@@ -54,7 +54,7 @@ def fetch_by_nct(nct_id):
     print(f"Retrieving trial details for: {nct_id}...")
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:  # nosec B310
             data = json.loads(response.read().decode("utf-8"))
             return data
     except Exception as e:
